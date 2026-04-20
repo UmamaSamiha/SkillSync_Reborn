@@ -10,7 +10,7 @@ from app.utils.helpers import success, error, get_current_user
 
 edit_tracking_bp = Blueprint("edit_tracking", __name__)
 
-HF_API_KEY = os.getenv("HF_API_KEY") or "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"
+HF_API_KEY = os.getenv("HF_API_KEY", "")
 
 
 class Submission(db.Model):
