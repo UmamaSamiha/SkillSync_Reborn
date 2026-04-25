@@ -98,6 +98,22 @@ def create_course():
     return success(course.to_dict(), "Course created", 201)
 
 
+@courses_bp.route("/mine/students", methods=["GET"])
+@jwt_required()
+@teacher_or_admin
+def my_course_students():
+    """Return deduplicated list of students enrolled in any of the teacher's courses."""
+    user    = get_current_user()
+    courses = Course.query.filter_by(instructor_id=user.id).all()
+    seen, students = set(), []
+    for course in courses:
+        for enrollment in course.enrollments.all():
+            if enrollment.student_id not in seen:
+                seen.add(enrollment.student_id)
+                students.append(enrollment.student.to_dict())
+    return success(students)
+
+
 @courses_bp.route("/mine", methods=["GET"])
 @jwt_required()
 @teacher_or_admin

@@ -25,10 +25,10 @@ function GroupManager({ assignmentId, onClose }) {
 
   useEffect(() => {
     Promise.all([
-      api.get('/users/?role=student&per_page=100'),
+      api.get('/courses/mine/students'),
       api.get(`/assignments/${assignmentId}/groups`),
     ]).then(([usersRes, groupsRes]) => {
-      setStudents(usersRes.data?.data?.items ?? []);
+      setStudents(usersRes.data?.data ?? []);
       setGroups(groupsRes.data?.data ?? []);
     }).catch(() => toast.error('Failed to load students'))
       .finally(() => setLoading(false));
@@ -181,8 +181,8 @@ export default function AssignmentsPage() {
       .catch(() => {});
 
     if (canManage) {
-      api.get('/users/?role=student&per_page=100')
-        .then(r => setAllStudents(r.data?.data?.items ?? []))
+      api.get('/courses/mine/students')
+        .then(r => setAllStudents(r.data?.data ?? []))
         .catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -449,6 +449,7 @@ export default function AssignmentsPage() {
             <div className="login-field">
               <label>Due Date</label>
               <input className="input" type="datetime-local" value={form.due_date}
+                min={new Date().toISOString().slice(0, 16)}
                 onChange={e => setForm({ ...form, due_date: e.target.value })} />
             </div>
             <div className="login-field">

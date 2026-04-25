@@ -58,6 +58,10 @@ def list_assignments():
     if topic_id:
         query = query.filter_by(topic_id=topic_id)
 
+    # Teachers only see assignments they created
+    if user.role == Role.TEACHER:
+        query = query.filter_by(created_by=user.id)
+
     if course_id:
         project_ids = [
             p.id for p in ProjectModel.query.filter_by(course_id=course_id).all()
