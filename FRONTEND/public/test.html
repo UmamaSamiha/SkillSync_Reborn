@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>SkillSync — Parisa's Features</title>
+<style>
+  body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #F5F0EB; margin: 0; }
+  h2 { color: #893941; font-size: 1.8rem; margin-bottom: 4px; }
+  .subtitle { color: #7A7063; margin-bottom: 20px; }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+  .btn { padding: 8px 18px; border: none; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+  .btn-red   { background: #893941; color: #fff; }
+  .btn-green { background: #5E6623; color: #fff; }
+  .btn-gray  { background: #7A7063; color: #fff; }
+  #status { padding: 10px 16px; background: #fff; border-radius: 8px; margin-bottom: 16px; color: #893941; font-weight: 600; border-left: 4px solid #893941; }
+
+  /* Risk Cards */
+  .risk-card { background: #fff; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; border-left: 5px solid #ccc; display: flex; justify-content: space-between; align-items: center; }
+  .risk-high   { border-color: #893941; }
+  .risk-medium { border-color: #C17B3A; }
+  .risk-low    { border-color: #5E6623; }
+  .risk-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+  .badge-high   { background: #F5D0D3; color: #893941; }
+  .badge-medium { background: #F5DEB5; color: #C17B3A; }
+  .badge-low    { background: #D4D994; color: #5E6623; }
+
+  /* Classification Cards */
+  .class-card { background: #fff; border-radius: 12px; padding: 14px 20px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .class-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
+  .Consistent  { background: #D4D994; color: #5E6623; }
+  .At-Risk     { background: #F5D0D3; color: #893941; }
+  .Improving   { background: #D0E4F5; color: #4A6B8A; }
+  .Declining   { background: #F5DEB5; color: #C17B3A; }
+  .Average     { background: #E8E8E8; color: #7A7063; }
+
+  /* Certificate */
+  .cert {
+    background: linear-gradient(135deg, #fff 0%, #FDF8F5 100%);
+    border: 3px solid #893941;
+    border-radius: 16px;
+    padding: 40px;
+    margin-bottom: 20px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(137,57,65,0.15);
+  }
+  .cert-logo { font-size: 1.4rem; font-weight: 700; color: #893941; margin-bottom: 8px; }
+  .cert-title { font-size: 0.9rem; color: #7A7063; margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.1em; }
+  .cert-name { font-size: 2rem; font-weight: 700; color: #2D2D2D; margin-bottom: 8px; }
+  .cert-desc { font-size: 1rem; color: #7A7063; margin-bottom: 24px; }
+  .cert-grade { font-size: 3rem; font-weight: 700; color: #893941; margin-bottom: 8px; }
+  .cert-stats { display: flex; justify-content: center; gap: 40px; margin-bottom: 24px; }
+  .cert-stat-label { font-size: 0.78rem; color: #7A7063; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cert-stat-value { font-size: 1.2rem; font-weight: 700; color: #2D2D2D; }
+  .cert-code { font-family: monospace; background: #F5F0EB; padding: 8px 16px; border-radius: 8px; font-size: 0.9rem; color: #893941; display: inline-block; margin-bottom: 8px; }
+  .cert-divider { border: none; border-top: 2px dashed #CB7885; margin: 20px 0; }
+  .cert-corner { position: absolute; width: 40px; height: 40px; border: 3px solid #893941; }
+  .cert-corner.tl { top: 12px; left: 12px; border-right: none; border-bottom: none; }
+  .cert-corner.tr { top: 12px; right: 12px; border-left: none; border-bottom: none; }
+  .cert-corner.bl { bottom: 12px; left: 12px; border-right: none; border-top: none; }
+  .cert-corner.br { bottom: 12px; right: 12px; border-left: none; border-top: none; }
+
+  /* Student selector */
+  select { padding: 8px 16px; border-radius: 20px; border: 2px solid #893941; font-size: 0.9rem; color: #2D2D2D; background: #fff; cursor: pointer; outline: none; }
+
+  /* Trend chart */
+  .trend-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .trend-label { width: 140px; font-size: 0.85rem; color: #7A7063; }
+  .trend-bar-fill { height: 24px; border-radius: 6px; background: linear-gradient(90deg, #893941, #CB7885); display: flex; align-items: center; padding: 0 8px; color: #fff; font-size: 0.78rem; font-weight: 600; min-width: 40px; }
+  .trend-pct { font-size: 0.85rem; font-weight: 700; color: #2D2D2D; width: 50px; }
+
+  #output { background: #fff; border-radius: 12px; padding: 20px; }
+</style>
+</head>
+<body>
+
+<h2>🎓 SkillSync — Parisa's Features</h2>
+<p class="subtitle">Risk Detection · Performance Trends · Classification · Certificates</p>
+
+<div id="status">👆 Click "1. Login" to start testing</div>
+
+<div class="btn-row">
+  <button class="btn btn-red"   onclick="login()">1. Login as Admin</button>
+  <button class="btn btn-red"   onclick="getRisk()">2. Risk Alerts</button>
+  <button class="btn btn-red"   onclick="getPerformance()">3. Performance Trends</button>
+  <button class="btn btn-red"   onclick="getClassification()">4. Classification</button>
+</div>
+
+<div class="btn-row">
+  <select id="studentSelect" onchange="onStudentChange()">
+    <option value="">-- Select Student --</option>
+  </select>
+  <button class="btn btn-green" onclick="generateCert()">5. Generate Certificate</button>
+  <button class="btn btn-green" onclick="generateAllCerts()">6. Generate ALL Certificates</button>
+  <button class="btn btn-gray"  onclick="verifyCert()">7. Verify Certificate</button>
+</div>
+
+<div id="output"><p style="color:#7A7063;text-align:center;padding:40px">Results will appear here</p></div>
+
+<script>
+var TOKEN = "";
+var STUDENTS = [];
+var LAST_CERT_CODE = "";
+var BASE = "http://127.0.0.1:5000/api";
+
+function status(msg) {
+  document.getElementById("status").textContent = msg;
+}
+
+function html(content) {
+  document.getElementById("output").innerHTML = content;
+}
+
+// ── 1. LOGIN ──────────────────────────────────────────────────────────────────
+async function login() {
+  status("Logging in as Admin...");
+  try {
+    var res  = await fetch(BASE + "/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: "admin@skillsync.edu", password: "password123" })
+    });
+    var data = await res.json();
+    TOKEN    = data.data.access_token;
+
+    // Load all students into dropdown
+    var res2  = await fetch(BASE + "/admin/student-classification", {
+      headers: { "Authorization": "Bearer " + TOKEN }
+    });
+    var data2 = await res2.json();
+    STUDENTS  = data2.data;
+
+    var sel = document.getElementById("studentSelect");
+    sel.innerHTML = '<option value="">-- Select Student --</option>';
+    STUDENTS.forEach(function(s) {
+      var opt = document.createElement("option");
+      opt.value = s.user.id;
+      opt.textContent = s.user.full_name + " (" + s.classification + ")";
+      sel.appendChild(opt);
+    });
+
+    status("✅ Logged in! " + STUDENTS.length + " students loaded in dropdown.");
+    html('<div style="text-align:center;padding:40px"><div style="font-size:3rem">✅</div><h3 style="color:#5E6623">Login Successful!</h3><p style="color:#7A7063">Admin access granted. ' + STUDENTS.length + ' students found in database.</p></div>');
+  } catch(e) {
+    status("❌ Login failed: " + e.message);
+  }
+}
+
+function onStudentChange() {
+  var sel = document.getElementById("studentSelect");
+  if (sel.value) {
+    var student = STUDENTS.find(function(s) { return s.user.id === sel.value; });
+    if (student) status("Selected: " + student.user.full_name);
+  }
+}
+
+// ── 2. RISK ALERTS ────────────────────────────────────────────────────────────
+async function getRisk() {
+  status("Fetching risk alerts from database...");
+  var res  = await fetch(BASE + "/admin/risk-alerts", {
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+  var data = await res.json();
+  var students = data.data;
+  status("✅ Risk Detection — " + students.length + " at-risk students found");
+
+  var cards = students.map(function(s) {
+    var r     = s.risk;
+    var level = r.risk_level;
+    var flags = r.flags.join(", ") || "None";
+    return '<div class="risk-card risk-' + level + '">' +
+      '<div>' +
+        '<div style="font-weight:700;font-size:1rem;margin-bottom:4px">' + s.full_name + '</div>' +
+        '<div style="font-size:0.82rem;color:#7A7063">' + s.email + '</div>' +
+        '<div style="font-size:0.82rem;margin-top:6px">📊 Attendance: <b>' + r.attendance_score + '%</b> &nbsp;|&nbsp; 📝 Late submissions: <b>' + r.late_submission_count + '</b></div>' +
+        '<div style="font-size:0.82rem;margin-top:4px">📉 Grade trend: <b>' + r.grade_trend + '</b> &nbsp;|&nbsp; ⚠ Flags: <b>' + flags + '</b></div>' +
+      '</div>' +
+      '<span class="risk-badge badge-' + level + '">' + level.toUpperCase() + '</span>' +
+    '</div>';
+  }).join("");
+
+  html('<h3 style="color:#893941;margin-bottom:16px">⚠ Risk Detection Alerts</h3>' + cards);
+}
+
+// ── 3. PERFORMANCE TRENDS ─────────────────────────────────────────────────────
+async function getPerformance() {
+  var sel = document.getElementById("studentSelect");
+  var studentId   = sel.value;
+  var studentName = "All Students";
+
+  if (!studentId && STUDENTS.length > 0) {
+    // Show performance for all students
+    status("Fetching performance for all students...");
+    var allHtml = '<h3 style="color:#893941;margin-bottom:16px">📈 Performance Trends — All Students</h3>';
+
+    for (var i = 0; i < STUDENTS.length; i++) {
+      var s   = STUDENTS[i];
+      var res = await fetch(BASE + "/analytics/performance/" + s.user.id, {
+        headers: { "Authorization": "Bearer " + TOKEN }
+      });
+      var data = await res.json();
+      var d    = data.data;
+
+      var trendIcon = d.trend_direction === "rising" ? "📈" : d.trend_direction === "falling" ? "📉" : "➡️";
+      var trendColor = d.trend_direction === "rising" ? "#5E6623" : d.trend_direction === "falling" ? "#893941" : "#C17B3A";
+
+      allHtml += '<div style="background:#fff;border-radius:12px;padding:16px 20px;margin-bottom:12px">';
+      allHtml += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">';
+      allHtml += '<div style="font-weight:700">' + s.user.full_name + '</div>';
+      allHtml += '<div>' + trendIcon + ' <span style="color:' + trendColor + ';font-weight:700">' + d.trend_direction.toUpperCase() + '</span> &nbsp;|&nbsp; Avg: <b>' + d.average + '%</b> &nbsp;|&nbsp; Submissions: <b>' + d.total_submissions + '</b></div>';
+      allHtml += '</div>';
+
+      if (d.trend && d.trend.length > 0) {
+        d.trend.forEach(function(t) {
+          allHtml += '<div class="trend-bar">';
+          allHtml += '<div class="trend-label">' + new Date(t.date).toLocaleDateString("en",{month:"short",day:"numeric"}) + '</div>';
+          allHtml += '<div class="trend-bar-fill" style="width:' + Math.max(t.percentage, 5) + '%">' + t.percentage + '%</div>';
+          allHtml += '</div>';
+        });
+      } else {
+        allHtml += '<p style="color:#7A7063;font-size:0.85rem">No graded submissions yet</p>';
+      }
+      allHtml += '</div>';
+    }
+    html(allHtml);
+    status("✅ Performance trends loaded for all " + STUDENTS.length + " students");
+    return;
+  }
+
+  // Single student
+  var student = STUDENTS.find(function(s) { return s.user.id === studentId; });
+  studentName = student ? student.user.full_name : "Student";
+  status("Fetching performance for " + studentName + "...");
+
+  var res  = await fetch(BASE + "/analytics/performance/" + studentId, {
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+  var data = await res.json();
+  var d    = data.data;
+
+  var trendIcon = d.trend_direction === "rising" ? "📈" : d.trend_direction === "falling" ? "📉" : "➡️";
+
+  var barsHtml = "";
+  if (d.trend && d.trend.length > 0) {
+    barsHtml = d.trend.map(function(t) {
+      return '<div class="trend-bar">' +
+        '<div class="trend-label">' + new Date(t.date).toLocaleDateString("en",{month:"short",day:"numeric"}) + '</div>' +
+        '<div class="trend-bar-fill" style="width:' + Math.max(t.percentage,5) + '%">' + t.percentage + '%</div>' +
+        '<div class="trend-pct">' + t.percentage + '%</div>' +
+      '</div>';
+    }).join("");
+  } else {
+    barsHtml = '<p style="color:#7A7063">No graded submissions yet</p>';
+  }
+
+  html(
+    '<h3 style="color:#893941;margin-bottom:4px">📈 Performance Trends — ' + studentName + '</h3>' +
+    '<p style="color:#7A7063;margin-bottom:20px">Average: <b>' + d.average + '%</b> &nbsp;|&nbsp; ' +
+    'Total submissions: <b>' + d.total_submissions + '</b> &nbsp;|&nbsp; ' +
+    'Trend: ' + trendIcon + ' <b>' + d.trend_direction + '</b></p>' +
+    '<div style="background:#fff;border-radius:12px;padding:20px">' + barsHtml + '</div>'
+  );
+  status("✅ Performance trends loaded for " + studentName);
+}
+
+// ── 4. CLASSIFICATION ─────────────────────────────────────────────────────────
+async function getClassification() {
+  status("Classifying all students from database...");
+  var res  = await fetch(BASE + "/admin/student-classification", {
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+  var data = await res.json();
+  STUDENTS = data.data;
+  status("✅ Classification complete — " + STUDENTS.length + " students");
+
+  var cards = STUDENTS.map(function(s) {
+    var cls = s.classification.replace(" ", "");
+    return '<div class="class-card">' +
+      '<div>' +
+        '<div style="font-weight:700;margin-bottom:2px">' + s.user.full_name + '</div>' +
+        '<div style="font-size:0.82rem;color:#7A7063">' + s.user.email + '</div>' +
+        '<div style="font-size:0.82rem;margin-top:4px">📊 Avg Grade: <b>' + s.avg_grade + '%</b> &nbsp;|&nbsp; Risk: <b>' + s.risk_level + '</b> &nbsp;|&nbsp; Trend: <b>' + s.grade_trend + '</b></div>' +
+      '</div>' +
+      '<span class="class-badge ' + cls + '">' + s.classification + '</span>' +
+    '</div>';
+  }).join("");
+
+  html('<h3 style="color:#893941;margin-bottom:16px">🎯 Student Classification</h3>' + cards);
+}
+
+// ── 5. GENERATE CERTIFICATE (single student) ──────────────────────────────────
+async function generateCert() {
+  var sel = document.getElementById("studentSelect");
+  if (!sel.value) {
+    status("⚠ Please select a student from the dropdown first!");
+    return;
+  }
+  var student = STUDENTS.find(function(s) { return s.user.id === sel.value; });
+  if (!student) { status("❌ Student not found"); return; }
+
+  status("Generating certificate for " + student.user.full_name + "...");
+  var res  = await fetch(BASE + "/certificates/generate", {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + TOKEN, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id:    student.user.id,
+      title:      "Certificate of Achievement — SkillSync LMS",
+    })
+  });
+  var data = await res.json();
+  var cert = data.data;
+  LAST_CERT_CODE = cert.verification_code;
+  status("✅ Certificate generated for " + student.user.full_name);
+  showCert(student.user.full_name, cert);
+}
+
+// ── 6. GENERATE ALL CERTIFICATES ─────────────────────────────────────────────
+async function generateAllCerts() {
+  if (!STUDENTS.length) {
+    status("⚠ Click Login first to load students");
+    return;
+  }
+  status("Generating certificates for all " + STUDENTS.length + " students...");
+  var certsHtml = '<h3 style="color:#893941;margin-bottom:16px">🏆 Certificates — All Students</h3>';
+
+  for (var i = 0; i < STUDENTS.length; i++) {
+    var s = STUDENTS[i];
+    try {
+      var res = await fetch(BASE + "/certificates/generate", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + TOKEN, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: s.user.id,
+          title:   "Certificate of Achievement — SkillSync LMS",
+        })
+      });
+      var data = await res.json();
+      var cert = data.data;
+      if (i === 0) LAST_CERT_CODE = cert.verification_code;
+      certsHtml += buildCertHtml(s.user.full_name, cert);
+      certsHtml += '<div style="height:20px"></div>';
+    } catch(e) {
+      certsHtml += '<p style="color:#893941">❌ Failed for ' + s.user.full_name + '</p>';
+    }
+  }
+  html(certsHtml);
+  status("✅ Certificates generated for all " + STUDENTS.length + " students!");
+}
+
+// ── 7. VERIFY CERTIFICATE ─────────────────────────────────────────────────────
+async function verifyCert() {
+  if (!LAST_CERT_CODE) {
+    status("⚠ Generate a certificate first!");
+    return;
+  }
+  status("Verifying certificate: " + LAST_CERT_CODE + "...");
+  var res  = await fetch(BASE + "/certificates/verify/" + LAST_CERT_CODE);
+  var data = await res.json();
+  var cert = data.data;
+  status("✅ Certificate verified! Code: " + LAST_CERT_CODE);
+  html(
+    '<h3 style="color:#5E6623;margin-bottom:16px">✅ Certificate Verified!</h3>' +
+    '<div style="background:#fff;border-radius:12px;padding:20px">' +
+    '<p>🔐 Verification Code: <b style="font-family:monospace;color:#893941">' + cert.verification_code + '</b></p>' +
+    '<p>👤 Holder: <b>' + cert.holder.full_name + '</b></p>' +
+    '<p>🏅 Grade: <b>' + (cert.grade || "N/A") + '</b></p>' +
+    '<p>⏱ Study Hours: <b>' + cert.study_hours + 'h</b></p>' +
+    '<p>📅 Issued: <b>' + new Date(cert.issued_at).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"}) + '</b></p>' +
+    '<p>✅ Valid: <b style="color:#5E6623">' + (cert.valid ? "YES" : "NO") + '</b></p>' +
+    '</div>'
+  );
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+function showCert(name, cert) {
+  html(buildCertHtml(name, cert));
+}
+
+function buildCertHtml(name, cert) {
+  var grade     = cert.grade || "A";
+  var hours     = cert.study_hours || 0;
+  var code      = cert.verification_code;
+  var date      = new Date(cert.issued_at).toLocaleDateString("en",{year:"numeric",month:"long",day:"numeric"});
+
+  return '<div class="cert">' +
+    '<div class="cert-corner tl"></div>' +
+    '<div class="cert-corner tr"></div>' +
+    '<div class="cert-corner bl"></div>' +
+    '<div class="cert-corner br"></div>' +
+    '<div class="cert-logo">⚙ SkillSync</div>' +
+    '<div class="cert-title">Certificate of Achievement</div>' +
+    '<div style="font-size:0.9rem;color:#7A7063;margin-bottom:8px">This certifies that</div>' +
+    '<div class="cert-name">' + name + '</div>' +
+    '<div class="cert-desc">has successfully completed the SkillSync LMS Program</div>' +
+    '<hr class="cert-divider">' +
+    '<div class="cert-stats">' +
+      '<div>' +
+        '<div class="cert-stat-label">Final Grade</div>' +
+        '<div class="cert-grade">' + grade + '</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="cert-stat-label">Study Hours</div>' +
+        '<div class="cert-stat-value" style="font-size:2rem;font-weight:700;color:#2D2D2D;margin-top:8px">' + hours + 'h</div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="cert-stat-label">Issue Date</div>' +
+        '<div class="cert-stat-value" style="font-size:0.9rem;margin-top:12px">' + date + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<hr class="cert-divider">' +
+    '<div style="font-size:0.82rem;color:#7A7063;margin-bottom:8px">Digital Verification Code</div>' +
+    '<div class="cert-code">' + code + '</div>' +
+    '<div style="font-size:0.78rem;color:#7A7063;margin-top:8px">Verify at: skillsync.edu/verify/' + code + '</div>' +
+  '</div>';
+}
+</script>
+</body>
+</html>

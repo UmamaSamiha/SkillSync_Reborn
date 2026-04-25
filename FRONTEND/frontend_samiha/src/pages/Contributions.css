@@ -1,0 +1,71 @@
+.contributions-page { max-width: 860px; }
+
+.contributions-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Card */
+.contrib-card { padding: 0; overflow: hidden; }
+.contrib-card.expanded { box-shadow: var(--shadow-md); }
+
+.contrib-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+.contrib-header:hover { background: var(--color-bg); }
+
+.contrib-title { font-weight: 600; font-size: 0.95rem; }
+
+.contrib-body {
+  padding: 0 24px 24px;
+  border-top: 1px solid var(--color-border);
+  animation: fadeIn 0.2s var(--ease-smooth) both;
+}
+
+/* Table wrapper */
+.contrib-table-wrap { overflow-x: auto; margin-top: 16px; }
+
+/* Progress bar in table */
+.progress-bar { height: 8px; border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.6s var(--ease-spring); }
+
+/* Stacked visual bar */
+.contrib-visual { margin-top: 24px; }
+
+.contrib-stacked-bar {
+  display: flex;
+  height: 16px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--color-border);
+}
+
+.stacked-segment {
+  height: 100%;
+  transition: width 0.6s var(--ease-spring);
+}
+
+/* Legend */
+.contrib-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+}
+
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}

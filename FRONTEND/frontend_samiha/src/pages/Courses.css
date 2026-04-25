@@ -1,0 +1,79 @@
+.courses-page { max-width: 860px; }
+
+.courses-list { display: flex; flex-direction: column; gap: 12px; }
+
+.course-card { padding: 0; overflow: hidden; cursor: default; }
+.course-card.expanded { box-shadow: var(--shadow-md); }
+
+.course-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  cursor: pointer;
+  gap: 12px;
+  transition: background var(--duration-fast);
+}
+.course-header:hover { background: var(--color-bg); }
+
+.course-header-left { display: flex; align-items: center; gap: 16px; flex: 1; }
+
+.course-code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-glass);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.course-title { font-weight: 600; font-size: 0.95rem; }
+
+.course-body {
+  padding: 0 24px 24px;
+  border-top: 1px solid var(--color-border);
+  animation: fadeIn 0.2s var(--ease-smooth) both;
+}
+
+/* Books */
+.recommended-books { margin-top: 16px; }
+
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.book-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: box-shadow var(--duration-fast);
+}
+.book-card:hover { box-shadow: var(--shadow-sm); }
+
+.book-cover {
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+}
+
+.book-cover-placeholder {
+  width: 100%;
+  height: 100px;
+  background: var(--color-primary-glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-primary);
+}
+
+.book-info { padding: 10px; }
+.book-title { font-size: 0.8rem; font-weight: 600; line-height: 1.3; margin-bottom: 2px; }
+.book-author { font-size: 0.72rem; color: var(--color-text-muted); }
+.book-year   { font-size: 0.7rem;  color: var(--color-text-light); margin-top: 2px; }

@@ -1,0 +1,48 @@
+/* SkillSync — Topbar */
+
+.topbar {
+  display:         flex;
+  align-items:     center;
+  justify-content: space-between;
+  margin-bottom:   28px;
+}
+
+.topbar-breadcrumb {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+  flex-wrap:   wrap;
+}
+.breadcrumb-item  { font-size: 0.82rem; color: var(--color-text-muted); }
+.breadcrumb-sep   { font-size: 0.82rem; color: var(--color-text-light); margin: 0 2px; }
+.breadcrumb-active{ font-size: 0.82rem; color: var(--color-text); font-weight: 500; }
+
+.topbar-right {
+  display:     flex;
+  align-items: center;
+  gap:         12px;
+}
+
+.topbar-notif {
+  position:      relative;
+  background:    var(--color-bg-card);
+  border:        1px solid var(--color-border);
+  border-radius: 50%;
+  width:         34px; height: 34px;
+  display:       flex; align-items: center; justify-content: center;
+  cursor:        pointer;
+  color:         var(--color-text-muted);
+  transition:    all var(--duration-fast);
+}
+.topbar-notif:hover { color: var(--color-primary); border-color: var(--color-primary-light); }
+
+.notif-dot {
+  position:      absolute;
+  top:           6px; right: 6px;
+  width:         7px; height: 7px;
+  background:    var(--color-primary);
+  border-radius: 50%;
+  border:        2px solid var(--color-bg-card);
+}
+
+.topbar-avatar { cursor: pointer; }
