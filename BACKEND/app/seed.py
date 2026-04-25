@@ -83,11 +83,36 @@ def seed_all():
     db.session.add_all([admin, teacher] + students)
     db.session.flush()
 
-    # ── Project ───────────────────────────────────────────────────────────
+    # ── Courses (created BEFORE project so we can link via course_id) ─────
+    course_defs = [
+        ("CS101",  "Introduction to Programming",    "Learn Python fundamentals, control flow, and basic data structures.", 3, "python programming beginner"),
+        ("CS201",  "Data Structures and Algorithms", "Arrays, linked lists, trees, sorting, and complexity analysis.",      3, "data structures algorithms"),
+        ("CS301",  "Database Systems",               "Relational models, SQL, normalization, and transaction management.",  3, "database systems SQL"),
+        ("CS401",  "Computer Networks",              "OSI model, TCP/IP, routing protocols, and network security.",         3, "computer networks TCP IP"),
+        ("CS499B", "Software Engineering Capstone",  "Full-stack development of a real-world LMS platform as a team.",     4, "software engineering agile"),
+    ]
+    courses = []
+    for code, title, desc, credits, keyword in course_defs:
+        c = Course(
+            code=code, title=title, description=desc,
+            credits=credits, topic_keyword=keyword,
+            instructor_id=teacher.id,
+        )
+        db.session.add(c)
+        db.session.flush()
+        courses.append(c)
+
+    capstone_course = courses[4]  # CS499B
+
+    for student in students:
+        for course in courses:
+            db.session.add(CourseEnrollment(course_id=course.id, student_id=student.id))
+
+    # ── Project (linked to capstone course) ───────────────────────────────
     project = Project(
         name        = "SkillSync LMS",
         description = "University LMS platform — group capstone project",
-        course_code = "CSE499B",
+        course_id   = capstone_course.id,
         created_by  = teacher.id,
         start_date  = date(2026, 1, 1),
         end_date    = date(2026, 6, 30),
@@ -96,6 +121,7 @@ def seed_all():
     db.session.flush()
 
     # ── Members ───────────────────────────────────────────────────────────
+    db.session.add(ProjectMember(project_id=project.id, user_id=teacher.id, role_in_group="instructor"))
     for i, s in enumerate(students):
         db.session.add(ProjectMember(
             project_id    = project.id,
@@ -123,29 +149,6 @@ def seed_all():
         db.session.add(t)
         db.session.flush()
         topics.append(t)
-
-    # ── Courses ───────────────────────────────────────────────────────────
-    course_defs = [
-        ("CS101",  "Introduction to Programming",    "Learn Python fundamentals, control flow, and basic data structures.", 3, "python programming beginner"),
-        ("CS201",  "Data Structures and Algorithms", "Arrays, linked lists, trees, sorting, and complexity analysis.",      3, "data structures algorithms"),
-        ("CS301",  "Database Systems",               "Relational models, SQL, normalization, and transaction management.",  3, "database systems SQL"),
-        ("CS401",  "Computer Networks",              "OSI model, TCP/IP, routing protocols, and network security.",         3, "computer networks TCP IP"),
-        ("CS499B", "Software Engineering Capstone",  "Full-stack development of a real-world LMS platform as a team.",     4, "software engineering agile"),
-    ]
-    courses = []
-    for code, title, desc, credits, keyword in course_defs:
-        c = Course(
-            code=code, title=title, description=desc,
-            credits=credits, topic_keyword=keyword,
-            instructor_id=teacher.id,
-        )
-        db.session.add(c)
-        db.session.flush()
-        courses.append(c)
-
-    for student in students:
-        for course in courses:
-            db.session.add(CourseEnrollment(course_id=course.id, student_id=student.id))
 
     # ── Assignments ───────────────────────────────────────────────────────
     assignment_defs = [

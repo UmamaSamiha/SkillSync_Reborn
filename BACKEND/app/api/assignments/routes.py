@@ -13,7 +13,8 @@ from app import db
 from app.models import (
     Assignment, Submission, SubmissionStatus,
     EditHistory, Topic, ActivityLog, Notification,
-    AssignmentGroup, GroupMembership, User, Role
+    AssignmentGroup, GroupMembership, User, Role,
+    CourseEnrollment, GradeRecord
 )
 from app.utils.helpers import (
     success, error, paginate, get_current_user,
@@ -26,21 +27,62 @@ assignments_bp = Blueprint("assignments", __name__)
 
 # ── GET /api/assignments ──────────────────────────────────────────────────────
 
+def _serialize_assignment(a):
+    d = a.to_dict()
+    d['project_name']  = a.project.name if a.project else None
+    d['pending_count'] = a.submissions.filter_by(status='submitted').count()
+    if a.project and a.project.course_id:
+        course = a.project.course
+        d['course_id']    = a.project.course_id
+        d['course_title'] = course.title if course else None
+        d['course_code']  = course.code  if course else None
+    else:
+        d['course_id']    = None
+        d['course_title'] = None
+        d['course_code']  = None
+    return d
+
+
 @assignments_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_assignments():
+    from app.models import Project as ProjectModel
+    user       = get_current_user()
     query      = Assignment.query
     project_id = request.args.get("project_id")
     topic_id   = request.args.get("topic_id")
+    course_id  = request.args.get("course_id")
 
     if project_id:
         query = query.filter_by(project_id=project_id)
     if topic_id:
         query = query.filter_by(topic_id=topic_id)
 
+    if course_id:
+        project_ids = [
+            p.id for p in ProjectModel.query.filter_by(course_id=course_id).all()
+        ]
+        query = query.filter(Assignment.project_id.in_(project_ids))
+    elif user.role == Role.STUDENT:
+        # Students only see assignments for courses they're enrolled in
+        enrolled_course_ids = [
+            e.course_id for e in
+            CourseEnrollment.query.filter_by(student_id=user.id).all()
+        ]
+        if enrolled_course_ids:
+            project_ids = [
+                p.id for p in
+                ProjectModel.query.filter(
+                    ProjectModel.course_id.in_(enrolled_course_ids)
+                ).all()
+            ]
+            query = query.filter(Assignment.project_id.in_(project_ids))
+        else:
+            query = query.filter(False)  # no enrollments → no assignments
+
     result = paginate(
         query.order_by(Assignment.due_date.asc()),
-        lambda a: a.to_dict()
+        _serialize_assignment
     )
     return success(result)
 
@@ -410,6 +452,59 @@ def grade_submission(submission_id):
 
     db.session.commit()
     return success(submission.to_dict(), "Submission graded")
+
+
+# ── POST /api/assignments/submissions/<id>/member-grades ──────────────────────
+
+@assignments_bp.route("/submissions/<submission_id>/member-grades", methods=["POST"])
+@jwt_required()
+@teacher_or_admin
+def grade_group_members(submission_id):
+    """Give individual scores to each group member for a group submission."""
+    user       = get_current_user()
+    submission = Submission.query.get_or_404(submission_id)
+    assignment = submission.assignment
+    now        = datetime.now(timezone.utc)
+
+    if not submission.group_id:
+        return error("Not a group submission", 400)
+
+    data          = request.get_json(silent=True) or {}
+    member_grades = data.get("member_grades", [])
+    if not member_grades:
+        return error("member_grades is required", 400)
+
+    for mg in member_grades:
+        student_id = mg.get("student_id")
+        score      = mg.get("score")
+        feedback   = mg.get("feedback", "")
+        if student_id is None or score is None:
+            continue
+        score = float(score)
+        score = max(0.0, min(score, assignment.max_score))
+
+        db.session.add(GradeRecord(
+            user_id       = student_id,
+            submission_id = submission.id,
+            score         = score,
+            max_score     = assignment.max_score,
+            percentage    = round(score / assignment.max_score * 100, 2),
+            recorded_at   = now,
+        ))
+        db.session.add(Notification(
+            user_id     = student_id,
+            title       = "Assignment graded",
+            message     = f'Your submission for "{assignment.title}" received {score}/{assignment.max_score}.{" " + feedback if feedback else ""}',
+            type        = "grade",
+            entity_type = "submission",
+            entity_id   = submission.id,
+        ))
+
+    submission.status    = SubmissionStatus.GRADED
+    submission.graded_at = now
+    submission.graded_by = user.id
+    db.session.commit()
+    return success(None, "Individual grades saved")
 
 
 # ── HELPERS ───────────────────────────────────────────────────────────────────

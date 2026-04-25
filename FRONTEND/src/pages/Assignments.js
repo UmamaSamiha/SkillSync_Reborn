@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   FileText, Clock, ChevronDown, ChevronUp,
-  Send, Plus, X, Star, AlertCircle, Users, UserPlus
+  Send, Plus, X, Star, AlertCircle, Users, UserPlus, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
@@ -127,21 +127,25 @@ export default function AssignmentsPage() {
   const { isTeacher, isAdmin } = useAuth();
   const canManage = isTeacher || isAdmin;
 
-  const [assignments, setAssignments] = useState([]);
-  const [projects,    setProjects]    = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [expanded,    setExpanded]    = useState(null);
-  const [submissions, setSubmissions] = useState({});
-  const [content,     setContent]     = useState('');
-  const [submitting,  setSubmitting]  = useState(false);
-  const [gradeData,   setGradeData]   = useState({});
-  const [showCreate,  setShowCreate]  = useState(false);
-  const [groupMgr,    setGroupMgr]    = useState(null); // assignment id showing group mgr
-  const [contribs,    setContribs]    = useState({});   // assignment_id → contrib data
-  const [allStudents, setAllStudents] = useState([]);   // for group member picker in create form
-  const [pickedStudents, setPickedStudents] = useState([]); // selected in create form
+  const [assignments,    setAssignments]    = useState([]);
+  const [courses,        setCourses]        = useState([]);
+  const [courseFilter,   setCourseFilter]   = useState('');
+  const [loading,        setLoading]        = useState(true);
+  const [expanded,       setExpanded]       = useState(null);
+  const [submissions,    setSubmissions]    = useState({});
+  const [content,        setContent]        = useState('');
+  const [submitting,     setSubmitting]     = useState(false);
+  const [gradeData,       setGradeData]       = useState({});
+  const [memberGradeData, setMemberGradeData] = useState({});
+  const [showCreate,     setShowCreate]     = useState(false);
+  const [groupMgr,       setGroupMgr]       = useState(null);
+  const [contribs,       setContribs]       = useState({});
+  const [allStudents,    setAllStudents]     = useState([]);
+  const [pickedStudents, setPickedStudents] = useState([]);
+  const [courseProjects, setCourseProjects] = useState([]);
 
   const [form, setForm] = useState({
+    course_id:   '',
     project_id:  '',
     title:       '',
     description: '',
@@ -162,19 +166,20 @@ export default function AssignmentsPage() {
     }
   };
 
-  const fetchProjects = async () => {
-    if (!canManage) return;
-    try {
-      const res = await api.get('/users/me/projects');
-      const data = res.data?.data;
-      const items = Array.isArray(data) ? data : (data?.items ?? []);
-      setProjects(items);
-    } catch {}
-  };
-
   useEffect(() => {
     fetchAssignments();
-    fetchProjects();
+
+    // Teachers see their own courses; students see only enrolled courses
+    const courseEndpoint = canManage ? '/courses/mine' : '/courses/';
+    api.get(courseEndpoint)
+      .then(res => {
+        const all = res.data?.data ?? [];
+        // For students, only show courses they're enrolled in
+        const filtered = canManage ? all : all.filter(c => c.enrolled);
+        setCourses(filtered);
+      })
+      .catch(() => {});
+
     if (canManage) {
       api.get('/users/?role=student&per_page=100')
         .then(r => setAllStudents(r.data?.data?.items ?? []))
@@ -183,12 +188,20 @@ export default function AssignmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-select the only project
-  useEffect(() => {
-    if (projects.length === 1 && !form.project_id) {
-      setForm(f => ({ ...f, project_id: projects[0].id }));
-    }
-  }, [projects]); // eslint-disable-line
+  const handleCourseChange = async (e) => {
+    const courseId = e.target.value;
+    setForm(f => ({ ...f, course_id: courseId, project_id: '' }));
+    setCourseProjects([]);
+    if (!courseId) return;
+    try {
+      const res      = await api.get(`/courses/${courseId}/projects`);
+      const projects = res.data?.data ?? [];
+      setCourseProjects(projects);
+      if (projects.length > 0) {
+        setForm(f => ({ ...f, project_id: projects[0].id }));
+      }
+    } catch {}
+  };
 
   const toggleExpand = async (id) => {
     if (expanded === id) { setExpanded(null); return; }
@@ -201,7 +214,6 @@ export default function AssignmentsPage() {
 
       if (canManage) {
         setSubmissions(prev => ({ ...prev, [id]: items }));
-        // Fetch contribution data for group assignments
         const a = assignments.find(x => x.id === id);
         if (a?.is_group && !contribs[id]) {
           api.get(`/timelogs/assignment/${id}/contributions`)
@@ -234,7 +246,7 @@ export default function AssignmentsPage() {
 
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!form.project_id) { toast.error('No project found — contact admin.'); return; }
+    if (!form.project_id) { toast.error('Select a course with a linked project.'); return; }
     if (form.is_group && pickedStudents.length < 2) {
       toast.error('Select at least 2 group members');
       return;
@@ -261,7 +273,8 @@ export default function AssignmentsPage() {
 
       setShowCreate(false);
       setPickedStudents([]);
-      setForm({ project_id: form.project_id, title: '', description: '', due_date: '', max_score: '100', difficulty: 'intermediate', is_group: false });
+      setCourseProjects([]);
+      setForm({ course_id: '', project_id: '', title: '', description: '', due_date: '', max_score: '100', difficulty: 'intermediate', is_group: false });
       await fetchAssignments();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create');
@@ -284,21 +297,36 @@ export default function AssignmentsPage() {
     }
   };
 
-  const projectOptions = projects.length
-    ? projects
-    : Array.from(
-        new Map(
-          assignments
-            .filter(a => a.project_id)
-            .map(a => [a.project_id, { id: a.project_id, name: a.project_name || a.project_id }])
-        ).values()
-      );
+  const handleMemberGrade = async (submissionId, assignmentId, groupMembers) => {
+    const memberData = memberGradeData[submissionId] || {};
+    const memberGrades = groupMembers.map(m => ({
+      student_id: m.user_id,
+      score:      parseFloat(memberData[m.user_id]?.score ?? ''),
+      feedback:   memberData[m.user_id]?.feedback || '',
+    }));
+    if (memberGrades.some(mg => isNaN(mg.score))) {
+      toast.error('Enter a score for every member'); return;
+    }
+    try {
+      await api.post(`/assignments/submissions/${submissionId}/member-grades`, { member_grades: memberGrades });
+      toast.success('Individual grades saved — each member notified.');
+      setExpanded(null);
+      setTimeout(() => toggleExpand(assignmentId), 100);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Grading failed');
+    }
+  };
+
+  // Filter assignments by selected course
+  const visibleAssignments = courseFilter
+    ? assignments.filter(a => a.course_id === courseFilter)
+    : assignments;
 
   if (loading) return <div style={{ padding: 40 }}>Loading assignments...</div>;
 
   return (
     <div className="assignments-page">
-      <div className="flex-between mb-24">
+      <div className="flex-between mb-16">
         <h1 style={{ fontFamily: 'var(--font-display)' }}>Assignments</h1>
         {canManage && (
           <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
@@ -306,6 +334,28 @@ export default function AssignmentsPage() {
           </button>
         )}
       </div>
+
+      {/* ── Course Filter Bar ─────────────────────────────── */}
+      {courses.length > 0 && (
+        <div className="flex-center gap-12 mb-24" style={{ flexWrap: 'wrap' }}>
+          <BookOpen size={14} className="text-muted" />
+          <button
+            className={`btn btn-sm ${courseFilter === '' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setCourseFilter('')}
+          >
+            All Courses
+          </button>
+          {courses.map(c => (
+            <button
+              key={c.id}
+              className={`btn btn-sm ${courseFilter === c.id ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setCourseFilter(c.id)}
+            >
+              {c.code}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Create Form ───────────────────────────────── */}
       {showCreate && canManage && (
@@ -327,6 +377,33 @@ export default function AssignmentsPage() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Course selector */}
+          <div className="login-field mb-16">
+            <label>Course *</label>
+            <select
+              className="input"
+              value={form.course_id}
+              onChange={handleCourseChange}
+              required
+            >
+              <option value="">Select a course</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+              ))}
+            </select>
+            {form.course_id && courseProjects.length === 0 && (
+              <div className="info-banner mt-8">
+                <AlertCircle size={16} />
+                <span>No project linked to this course yet. Contact admin to create one.</span>
+              </div>
+            )}
+            {form.course_id && courseProjects.length > 0 && (
+              <p className="text-xs text-muted mt-4">
+                Project: {courseProjects.find(p => p.id === form.project_id)?.name ?? '—'}
+              </p>
+            )}
           </div>
 
           {/* Inline member picker for group assignments */}
@@ -385,13 +462,6 @@ export default function AssignmentsPage() {
             </div>
           </div>
 
-          {projectOptions.length === 0 && (
-            <div className="info-banner mt-8">
-              <AlertCircle size={16} />
-              <span>No projects found. Contact admin.</span>
-            </div>
-          )}
-
           <div className="login-field" style={{ marginTop: 12 }}>
             <label>Description</label>
             <textarea className="input" rows={3} value={form.description}
@@ -400,7 +470,7 @@ export default function AssignmentsPage() {
           </div>
 
           <button type="submit" className="btn btn-primary" style={{ marginTop: 16 }}
-            disabled={projectOptions.length === 0 || (form.is_group && pickedStudents.length < 2)}>
+            disabled={!form.project_id || (form.is_group && pickedStudents.length < 2)}>
             <Plus size={16} /> {form.is_group
               ? `Create Group Assignment${pickedStudents.length >= 2 ? ` (${pickedStudents.length} members)` : ' — select members above'}`
               : 'Create Assignment'}
@@ -410,7 +480,7 @@ export default function AssignmentsPage() {
 
       {/* ── Assignment List ───────────────────────────── */}
       <div className="assignments-list">
-        {assignments.map(a => {
+        {visibleAssignments.map(a => {
           const isExp     = expanded === a.id;
           const sub       = !canManage ? submissions[a.id] : null;
           const allSubs   = canManage  ? (submissions[a.id] || []) : [];
@@ -425,6 +495,12 @@ export default function AssignmentsPage() {
                   <div>
                     <p className="assignment-title">{a.title}</p>
                     <div className="flex-center gap-8" style={{ marginTop: 2 }}>
+                      {a.course_code && (
+                        <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
+                          <BookOpen size={9} style={{ marginRight: 2 }} />
+                          {a.course_code}
+                        </span>
+                      )}
                       {a.is_group && (
                         <span className="badge badge-info" style={{ fontSize: '0.65rem' }}>
                           <Users size={10} /> Group
@@ -572,7 +648,41 @@ export default function AssignmentsPage() {
                             </div>
                           )}
 
-                          {s.status === 'submitted' && (
+                          {s.status === 'submitted' && s.group_members?.length > 0 && (
+                            /* Individual grading for group submissions */
+                            <div className="grade-form">
+                              <p className="text-xs text-muted mb-8" style={{ fontWeight: 600 }}>
+                                Grade each member individually:
+                              </p>
+                              {s.group_members.map(m => (
+                                <div key={m.user_id} className="flex-center gap-12 mb-8">
+                                  <span className="text-sm" style={{ minWidth: 130, fontWeight: 500 }}>
+                                    {m.full_name}
+                                  </span>
+                                  <input className="input" type="number"
+                                    placeholder={`Score (max ${a.max_score})`} style={{ width: 120 }}
+                                    value={memberGradeData[s.id]?.[m.user_id]?.score || ''}
+                                    onChange={e => setMemberGradeData(prev => ({
+                                      ...prev,
+                                      [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], score: e.target.value } }
+                                    }))} />
+                                  <input className="input" placeholder="Feedback"
+                                    value={memberGradeData[s.id]?.[m.user_id]?.feedback || ''}
+                                    onChange={e => setMemberGradeData(prev => ({
+                                      ...prev,
+                                      [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], feedback: e.target.value } }
+                                    }))} />
+                                </div>
+                              ))}
+                              <button className="btn btn-primary btn-sm mt-8"
+                                onClick={() => handleMemberGrade(s.id, a.id, s.group_members)}>
+                                <Star size={14} /> Save All Grades
+                              </button>
+                            </div>
+                          )}
+
+                          {s.status === 'submitted' && !s.group_members?.length && (
+                            /* Regular single grading for individual submissions */
                             <div className="grade-form">
                               <div className="flex-center gap-12">
                                 <input className="input" type="number"
@@ -609,10 +719,14 @@ export default function AssignmentsPage() {
           );
         })}
 
-        {assignments.length === 0 && (
+        {visibleAssignments.length === 0 && (
           <div className="text-center text-muted" style={{ padding: 60 }}>
             <FileText size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p>No assignments yet.{canManage && ' Click "New Assignment" to create one.'}</p>
+            <p>
+              {courseFilter
+                ? 'No assignments in this course yet.'
+                : `No assignments yet.${canManage ? ' Click "New Assignment" to create one.' : ''}`}
+            </p>
           </div>
         )}
       </div>

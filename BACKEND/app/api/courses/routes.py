@@ -12,7 +12,7 @@ from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
 from app import db
-from app.models import Course, CourseEnrollment
+from app.models import Course, CourseEnrollment, Project, ProjectMember
 from app.utils.helpers import success, error, get_current_user, teacher_or_admin
 
 courses_bp = Blueprint("courses", __name__)
@@ -32,8 +32,9 @@ def list_courses():
     result = []
     for c in courses:
         d = c.to_dict()
-        d["enrolled"]       = c.id in enrolled_ids
-        d["student_count"]  = c.enrollments.count()
+        d["enrolled"]          = c.id in enrolled_ids
+        d["student_count"]     = c.enrollments.count()
+        d["assignment_count"]  = sum(p.assignments.count() for p in c.projects.all())
         result.append(d)
 
     return success(result)
@@ -73,8 +74,51 @@ def create_course():
         instructor_id = user.id,
     )
     db.session.add(course)
+    db.session.flush()  # get course.id before commit
+
+    # Auto-create a default project linked to this course
+    project = Project(
+        name       = course.title,
+        description= f"Default project for {course.code}",
+        course_id  = course.id,
+        created_by = user.id,
+        is_active  = True,
+    )
+    db.session.add(project)
+    db.session.flush()
+
+    # Add teacher as project member
+    db.session.add(ProjectMember(
+        project_id    = project.id,
+        user_id       = user.id,
+        role_in_group = "instructor",
+    ))
+
     db.session.commit()
     return success(course.to_dict(), "Course created", 201)
+
+
+@courses_bp.route("/mine", methods=["GET"])
+@jwt_required()
+@teacher_or_admin
+def my_courses():
+    user    = get_current_user()
+    courses = Course.query.filter_by(instructor_id=user.id).order_by(Course.code).all()
+    result  = []
+    for c in courses:
+        d = c.to_dict()
+        d["student_count"]    = c.enrollments.count()
+        d["assignment_count"] = sum(p.assignments.count() for p in c.projects.all())
+        result.append(d)
+    return success(result)
+
+
+@courses_bp.route("/<course_id>/projects", methods=["GET"])
+@jwt_required()
+def course_projects(course_id):
+    Course.query.get_or_404(course_id)
+    projects = Project.query.filter_by(course_id=course_id, is_active=True).all()
+    return success([p.to_dict() for p in projects])
 
 
 @courses_bp.route("/<course_id>/enroll", methods=["POST"])

@@ -83,7 +83,7 @@ class Project(db.Model):
     id          = db.Column(db.String(36), primary_key=True, default=gen_uuid)
     name        = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    course_code = db.Column(db.String(50), nullable=True)
+    course_id   = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=True)
     created_by  = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     is_active   = db.Column(db.Boolean, default=True)
     start_date  = db.Column(db.Date, nullable=True)
@@ -93,18 +93,21 @@ class Project(db.Model):
     members     = db.relationship("ProjectMember", back_populates="project", lazy="dynamic")
     assignments = db.relationship("Assignment", back_populates="project", lazy="dynamic")
     creator     = db.relationship("User", foreign_keys=[created_by])
+    course      = db.relationship("Course", back_populates="projects")
 
     def to_dict(self):
         return {
-            "id":          self.id,
-            "name":        self.name,
-            "description": self.description,
-            "course_code": self.course_code,
-            "created_by":  self.created_by,
-            "is_active":   self.is_active,
-            "start_date":  self.start_date.isoformat() if self.start_date else None,
-            "end_date":    self.end_date.isoformat() if self.end_date else None,
-            "created_at":  self.created_at.isoformat(),
+            "id":           self.id,
+            "name":         self.name,
+            "description":  self.description,
+            "course_id":    self.course_id,
+            "course_title": self.course.title if self.course else None,
+            "course_code":  self.course.code  if self.course else None,
+            "created_by":   self.created_by,
+            "is_active":    self.is_active,
+            "start_date":   self.start_date.isoformat() if self.start_date else None,
+            "end_date":     self.end_date.isoformat() if self.end_date else None,
+            "created_at":   self.created_at.isoformat(),
         }
 
 class ProjectMember(db.Model):
@@ -502,6 +505,7 @@ class Course(db.Model):
     instructor  = db.relationship("User", foreign_keys=[instructor_id])
     enrollments = db.relationship("CourseEnrollment", back_populates="course", lazy="dynamic")
     time_logs   = db.relationship("TimeLog", back_populates="course", lazy="dynamic")
+    projects    = db.relationship("Project", back_populates="course", lazy="dynamic")
 
     def to_dict(self):
         return {
@@ -511,6 +515,7 @@ class Course(db.Model):
             "description":   self.description,
             "credits":       self.credits,
             "topic_keyword": self.topic_keyword,
+            "instructor_id": self.instructor_id,
             "instructor":    self.instructor.full_name if self.instructor else None,
         }
 
