@@ -561,3 +561,197 @@ class TimeLog(db.Model):
             "logged_at":     self.logged_at.isoformat() if self.logged_at else None,
             "course_title":  self.course.title if self.course else None,
         }
+# ── Anushka: Curriculum Models ────────────────────────────────────────────────
+
+class AnushkaTopic(db.Model):
+    __tablename__ = "anushka_topics"
+
+    id                = db.Column(db.Integer, primary_key=True)
+    title             = db.Column(db.String(255), nullable=False)
+    description       = db.Column(db.Text, nullable=True)
+    track             = db.Column(db.String(100), nullable=False, default="General")
+    order             = db.Column(db.Integer, nullable=False, default=0)
+    mastery_threshold = db.Column(db.Integer, nullable=False, default=80)
+
+    prerequisites    = db.relationship(
+        "AnushkaTopicPrerequisite",
+        foreign_keys="AnushkaTopicPrerequisite.topic_id",
+        backref="topic",
+        lazy=True,
+        cascade="all, delete-orphan",
+    )
+    progress_records = db.relationship(
+        "AnushkaUserTopicProgress",
+        backref="topic",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+    def to_dict(self):
+        return {
+            "id":                self.id,
+            "title":             self.title,
+            "description":       self.description,
+            "track":             self.track,
+            "order":             self.order,
+            "mastery_threshold": self.mastery_threshold,
+            "prerequisite_ids":  [p.prerequisite_id for p in self.prerequisites],
+        }
+
+
+class AnushkaTopicPrerequisite(db.Model):
+    __tablename__ = "anushka_topic_prerequisites"
+
+    id              = db.Column(db.Integer, primary_key=True)
+    topic_id        = db.Column(db.Integer, db.ForeignKey("anushka_topics.id"), nullable=False)
+    prerequisite_id = db.Column(db.Integer, db.ForeignKey("anushka_topics.id"), nullable=False)
+
+    __table_args__ = (db.UniqueConstraint("topic_id", "prerequisite_id"),)
+
+
+class AnushkaUserTopicProgress(db.Model):
+    __tablename__ = "anushka_user_topic_progress"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    topic_id   = db.Column(db.Integer, db.ForeignKey("anushka_topics.id"), nullable=False)
+    status     = db.Column(db.String(20), nullable=False, default="locked")
+    quiz_score = db.Column(db.Integer, nullable=True)
+    attempts   = db.Column(db.Integer, nullable=False, default=0)
+    updated_at = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    __table_args__ = (db.UniqueConstraint("user_id", "topic_id"),)
+
+    def to_dict(self):
+        return {
+            "user_id":    self.user_id,
+            "topic_id":   self.topic_id,
+            "status":     self.status,
+            "quiz_score": self.quiz_score,
+            "attempts":   self.attempts,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+# ── Anushka: Question Bank Models ─────────────────────────────────────────────
+
+class AnushkaQuestionBank(db.Model):
+    __tablename__ = "anushka_question_banks"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    title       = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    track       = db.Column(db.String(100), nullable=True)
+    created_by  = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    created_at  = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    questions = db.relationship(
+        "AnushkaQuestion",
+        backref="bank",
+        lazy=True,
+        cascade="all, delete-orphan"
+    )
+
+    def to_dict(self):
+        return {
+            "id":          self.id,
+            "title":       self.title,
+            "description": self.description,
+            "track":       self.track,
+            "created_by":  self.created_by,
+            "created_at":  self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class AnushkaQuestion(db.Model):
+    __tablename__ = "anushka_questions"
+
+    id          = db.Column(db.Integer, primary_key=True)
+    bank_id     = db.Column(db.Integer, db.ForeignKey("anushka_question_banks.id"), nullable=False)
+    text        = db.Column(db.Text, nullable=False)
+    q_type      = db.Column(db.String(20), nullable=False, default="mcq")
+    difficulty  = db.Column(db.String(20), nullable=False, default="beginner")
+    options     = db.Column(db.JSON, nullable=True)
+    correct     = db.Column(db.String(255), nullable=True)
+    explanation = db.Column(db.Text, nullable=True)
+    created_at  = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    def to_dict(self):
+        return {
+            "id":          self.id,
+            "bank_id":     self.bank_id,
+            "text":        self.text,
+            "q_type":      self.q_type,
+            "difficulty":  self.difficulty,
+            "options":     self.options,
+            "correct":     self.correct,
+            "explanation": self.explanation,
+        }
+
+
+# ── Anushka: Edit Tracking Models ─────────────────────────────────────────────
+
+class AnushkaSubmission(db.Model):
+    __tablename__ = "anushka_submissions"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    user_id       = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    title         = db.Column(db.String(255), nullable=False)
+    content_type  = db.Column(db.String(50), nullable=False, default="quiz")
+    topic_name    = db.Column(db.String(255), nullable=True)
+    topic_id      = db.Column(db.Integer, db.ForeignKey("anushka_topics.id"), nullable=True)
+    final_text    = db.Column(db.Text, nullable=True)
+    ai_score      = db.Column(db.Float, nullable=True)
+    ai_flagged    = db.Column(db.Boolean, default=False)
+    teacher_score = db.Column(db.Integer, nullable=True)
+    scored_by     = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    scored_at     = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at    = db.Column(db.DateTime(timezone=True), default=now_utc)
+    updated_at    = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    edits  = db.relationship("AnushkaEditEvent", backref="submission", lazy=True, cascade="all, delete-orphan")
+    user   = db.relationship("User", foreign_keys=[user_id], backref="anushka_submissions", lazy=True)
+    scorer = db.relationship("User", foreign_keys=[scored_by], lazy=True)
+
+    def to_dict(self):
+        return {
+            "id":            self.id,
+            "user_id":       self.user_id,
+            "user_name":     self.user.full_name if self.user else None,
+            "user_email":    self.user.email if self.user else None,
+            "title":         self.title,
+            "content_type":  self.content_type,
+            "topic_name":    self.topic_name,
+            "final_text":    self.final_text,
+            "ai_score":      self.ai_score,
+            "ai_flagged":    self.ai_flagged,
+            "teacher_score": self.teacher_score,
+            "scored_by":     self.scorer.full_name if self.scorer else None,
+            "scored_at":     self.scored_at.isoformat() if self.scored_at else None,
+            "created_at":    self.created_at.isoformat() if self.created_at else None,
+            "updated_at":    self.updated_at.isoformat() if self.updated_at else None,
+            "edit_count":    len(self.edits),
+        }
+
+
+class AnushkaEditEvent(db.Model):
+    __tablename__ = "anushka_edit_events"
+
+    id            = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey("anushka_submissions.id"), nullable=False)
+    text_snapshot = db.Column(db.Text, nullable=False)
+    chars_added   = db.Column(db.Integer, nullable=False, default=0)
+    chars_removed = db.Column(db.Integer, nullable=False, default=0)
+    is_paste      = db.Column(db.Boolean, default=False)
+    created_at    = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    def to_dict(self):
+        return {
+            "id":            self.id,
+            "submission_id": self.submission_id,
+            "text_snapshot": self.text_snapshot,
+            "chars_added":   self.chars_added,
+            "chars_removed": self.chars_removed,
+            "is_paste":      self.is_paste,
+            "created_at":    self.created_at.isoformat() if self.created_at else None,
+        }

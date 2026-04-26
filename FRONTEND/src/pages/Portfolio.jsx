@@ -40,7 +40,30 @@ export default function PortfolioPage() {
         setLinkedinUrl(d.linkedin_url || '');
         setSkills(d.skills || []);
       })
-      .catch(() => toast.error('Could not load portfolio'))
+      .catch((err) => {
+        if (err.response?.status === 404) {
+          // Auto-create empty portfolio for this user
+          api.put(`/portfolio/${userId}`, {
+            bio: '', github_url: '', linkedin_url: '', skills: []
+          }).then(() => {
+            setPortfolio({
+              full_name: me?.full_name,
+              role: me?.role,
+              bio: '',
+              github_url: '',
+              linkedin_url: '',
+              skills: [],
+              projects: []
+            });
+            setBio('');
+            setGithubUrl('');
+            setLinkedinUrl('');
+            setSkills([]);
+          }).catch(() => toast.error('Could not create portfolio'));
+        } else {
+          toast.error('Could not load portfolio');
+        }
+      })
       .finally(() => setLoading(false));
   };
 
@@ -108,7 +131,7 @@ export default function PortfolioPage() {
   };
 
   if (loading) return <div className="pf-loading">Loading portfolio…</div>;
-  if (!portfolio) return <div className="pf-loading">Portfolio not found.</div>;
+  if (!portfolio) return <div className="pf-loading">Loading portfolio…</div>;
 
   return (
     <div className="pf-page">
