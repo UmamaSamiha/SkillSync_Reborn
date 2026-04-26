@@ -1,0 +1,215 @@
+.assignments-page {
+  padding: 24px 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.assignments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.assignment-card          { padding: 0; overflow: hidden; }
+.assignment-card.expanded { box-shadow: var(--shadow-md); }
+
+.assignment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background var(--duration-fast);
+}
+.assignment-header:hover { background: var(--color-bg); }
+
+.assignment-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.text-danger { color: var(--color-danger, #c0392b); }
+
+.assignment-body {
+  padding: 0 20px 20px;
+  border-top: 1px solid var(--color-border);
+  padding-top: 16px;
+  animation: fadeIn 0.3s var(--ease-smooth);
+}
+
+.grade-box {
+  background: var(--color-success-light);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+.grade-box p            { margin-bottom: 4px; }
+.grade-box p:last-child { margin-bottom: 0; }
+
+.submission-form textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+
+.info-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--color-warning-light, #fff4e0);
+  border-left: 3px solid var(--color-warning, #c17b3a);
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.create-form { animation: fadeIn 0.3s var(--ease-smooth); }
+.create-grid {
+  display: grid;
+  grid-template-columns: 2fr 2fr 1fr 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .create-grid { grid-template-columns: 1fr; }
+  .assignments-page { padding: 16px; }
+}
+
+.submission-row {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 10px;
+}
+
+.submission-row-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.submission-content {
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin: 8px 0;
+  border-left: 3px solid var(--color-border-strong, var(--color-border));
+}
+
+.grade-form {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+}
+
+.teacher-submissions { margin-top: 4px; }
+
+.login-field { display: flex; flex-direction: column; }
+
+/* ── Group / Individual type toggle ─────────────────── */
+.type-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: all var(--duration-fast);
+  color: var(--color-text-muted);
+}
+.type-toggle:hover { border-color: var(--color-primary); }
+.type-toggle.active {
+  border-color: var(--color-primary);
+  background: var(--color-primary-glass);
+  color: var(--color-primary);
+}
+
+/* ── Group manager ───────────────────────────────────── */
+.group-manager {
+  margin-bottom: 16px;
+  background: var(--color-bg);
+}
+
+.existing-groups { display: flex; flex-direction: column; gap: 6px; }
+
+.group-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--color-info-light);
+  color: var(--color-info);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.student-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  background: var(--color-bg-elevated);
+}
+
+.student-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.student-pick-item input { accent-color: var(--color-primary); }
+
+/* ── Group info banner (student view) ───────────────── */
+.group-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--color-info-light);
+  color: var(--color-info);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+/* ── Contribution inline block ──────────────────────── */
+.contrib-inline-block {
+  margin: 10px 0;
+  padding: 12px 14px;
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+.contrib-inline-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.contrib-inline-row:last-child { margin-bottom: 0; }
+
+.contrib-inline-name {
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 110px;
+  color: var(--color-text);
+}
+
+.progress-bar  { height: 8px; background: var(--color-border); border-radius: var(--radius-full); overflow: hidden; }
+.progress-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.5s var(--ease-spring); }
+

@@ -1,0 +1,176 @@
+/* SkillSync — Heatmap Page */
+
+.heatmap-title    { font-size: 1.5rem; margin-bottom: 4px; }
+.heatmap-subtitle { color: var(--color-text-muted); font-size: 0.88rem; margin-bottom: 20px; }
+
+/* Filters */
+.heatmap-filters {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+  flex-wrap:   wrap;
+  margin-bottom: 16px;
+}
+.filter-group  { display: flex; align-items: center; gap: 6px; }
+.filter-label  { font-size: 0.82rem; color: var(--color-text-muted); }
+.filter-select {
+  border:        1.5px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding:       5px 12px;
+  font-size:     0.82rem;
+  font-family:   var(--font-body);
+  background:    var(--color-bg-card);
+  color:         var(--color-text);
+  cursor:        pointer;
+  outline:       none;
+}
+.filter-select:focus { border-color: var(--color-primary); }
+
+/* Alert banner */
+.heatmap-alert {
+  display:       flex;
+  align-items:   center;
+  justify-content: space-between;
+  background:    #FEF3C7;
+  border:        1px solid #F9C74F;
+  border-radius: var(--radius-md);
+  padding:       10px 16px;
+  margin-bottom: 20px;
+  gap:           12px;
+  flex-wrap:     wrap;
+}
+.alert-left {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  font-size:   0.85rem;
+  color:       #78350F;
+  font-weight: 500;
+}
+
+/* Main layout */
+.heatmap-main {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* Activity Grid */
+.heatmap-grid-wrap { overflow-x: auto; }
+
+.section-label {
+  font-size:     0.78rem;
+  font-weight:   600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color:         var(--color-text-muted);
+  margin-bottom: 16px;
+}
+
+.activity-grid {
+  display:               grid;
+  grid-template-columns: 72px repeat(7, 1fr);
+  gap:                   6px;
+  min-width:             400px;
+}
+
+.grid-name-col   { /* empty top-left cell */ }
+.grid-day-header {
+  text-align:  center;
+  font-size:   0.72rem;
+  font-weight: 600;
+  color:       var(--color-text-muted);
+  padding-bottom: 4px;
+}
+
+.grid-row {
+  display: contents;
+}
+.grid-name {
+  font-size:   0.82rem;
+  font-weight: 500;
+  color:       var(--color-text);
+  display:     flex;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.grid-cell {
+  width:         100%;
+  aspect-ratio:  1;
+  max-width:     36px;
+  border-radius: var(--radius-sm);
+  cursor:        pointer;
+  transition:    transform var(--duration-fast), box-shadow var(--duration-fast);
+}
+.grid-cell:hover { transform: scale(1.15); box-shadow: var(--shadow-md); }
+
+/* Heat levels — green palette from Figma */
+.level-0 { background: #EAEAD8; }
+.level-1 { background: var(--color-accent-light); }   /* #D4D994 */
+.level-2 { background: #A8AF4A; }
+.level-3 { background: var(--color-accent); }          /* #5E6623 */
+.level-4 { background: #3D4316; }
+
+/* Legend */
+.grid-legend {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  margin-top:  14px;
+  flex-wrap:   wrap;
+}
+.legend-item {
+  display:     flex;
+  align-items: center;
+  gap:         4px;
+}
+.legend-cell {
+  width:         14px;
+  height:        14px;
+  border-radius: 3px;
+}
+
+/* Contribution Share */
+.contribution-share {}
+
+.contrib-list {
+  display:        flex;
+  flex-direction: column;
+  gap:            14px;
+  margin-top:     4px;
+}
+
+.contrib-row {
+  display:     flex;
+  align-items: center;
+  gap:         10px;
+}
+
+.contrib-info {
+  flex:     1;
+  min-width: 0;
+}
+
+.contrib-name {
+  font-size:   0.85rem;
+  font-weight: 500;
+  color:       var(--color-text);
+}
+.contrib-pct {
+  font-size:   0.82rem;
+  font-weight: 600;
+  color:       var(--color-primary);
+}
+
+/* Avatar color variants */
+.contrib-avatar.color-0 { background: var(--color-primary); }
+.contrib-avatar.color-1 { background: #5E6623; }
+.contrib-avatar.color-2 { background: #C17B3A; }
+.contrib-avatar.color-3 { background: #4A6B8A; }
+.contrib-avatar.color-4 { background: #7A5C8A; }
+
+@media (max-width: 900px) {
+  .heatmap-main { grid-template-columns: 1fr; }
+}
