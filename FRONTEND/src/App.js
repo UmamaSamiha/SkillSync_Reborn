@@ -18,6 +18,14 @@ import CoursesPage from './pages/Courses';
 import TimeTrackerPage from './pages/TimeTracker';
 import ContributionsPage from './pages/Contributions';
 
+// Anushka's pages
+import CurriculumPage from './pages/Curriculum';
+import PortfolioPage from './pages/Portfolio';
+import QuestionBankPage from './pages/QuestionBank';
+import EditTracker from './pages/EditTracker';
+import AdminEditDashboard from './pages/AdminEditDashboard';
+import AdminTopicManager from './pages/AdminTopicManager';
+
 function Layout({ children }) {
   return (
     <div className="app-layout">
@@ -33,7 +41,7 @@ function PrivateRoute({ children, adminOnly, teacherOnly }) {
   const { user, loading } = useAuth();
   if (loading) return <div style={{ padding: 40 }}>Loading...</div>;
   if (!user) return <Navigate to="/login" />;
-  if (adminOnly  && user.role !== 'admin')                          return <Navigate to="/" />;
+  if (adminOnly  && user.role !== 'admin') return <Navigate to="/" />;
   if (teacherOnly && user.role !== 'teacher' && user.role !== 'admin') return <Navigate to="/" />;
   return <Layout>{children}</Layout>;
 }
@@ -71,9 +79,31 @@ function AppRoutes() {
         <PrivateRoute><Certificates /></PrivateRoute>
       }/>
 
+      {/* Anushka's student routes */}
+      <Route path="/curriculum" element={
+        <PrivateRoute><CurriculumPage /></PrivateRoute>
+      }/>
+      <Route path="/portfolio/:userId" element={
+        <PrivateRoute><PortfolioPage /></PrivateRoute>
+      }/>
+      <Route path="/question-bank" element={
+        <PrivateRoute><QuestionBankPage /></PrivateRoute>
+      }/>
+      <Route path="/submit" element={
+        <PrivateRoute><EditTracker /></PrivateRoute>
+      }/>
+
       {/* Teacher routes */}
       <Route path="/teacher" element={
         <PrivateRoute teacherOnly={true}><TeacherDashboard /></PrivateRoute>
+      }/>
+
+      {/* Anushka's teacher routes */}
+      <Route path="/teacher/edits" element={
+        <PrivateRoute teacherOnly={true}><AdminEditDashboard /></PrivateRoute>
+      }/>
+      <Route path="/teacher/topics" element={
+        <PrivateRoute teacherOnly={true}><AdminTopicManager /></PrivateRoute>
       }/>
 
       {/* Shared (student + teacher + admin) */}
@@ -86,8 +116,6 @@ function AppRoutes() {
       <Route path="/analytics" element={
         <PrivateRoute><AnalyticsPage /></PrivateRoute>
       }/>
-
-      {/* Shared feature routes */}
       <Route path="/courses" element={
         <PrivateRoute><CoursesPage /></PrivateRoute>
       }/>
@@ -101,6 +129,14 @@ function AppRoutes() {
       {/* Admin routes */}
       <Route path="/admin" element={
         <PrivateRoute adminOnly={true}><AdminDashboard /></PrivateRoute>
+      }/>
+
+      {/* Anushka's admin routes */}
+      <Route path="/admin/edits" element={
+        <PrivateRoute adminOnly={true}><AdminEditDashboard /></PrivateRoute>
+      }/>
+      <Route path="/admin/topics" element={
+        <PrivateRoute adminOnly={true}><AdminTopicManager /></PrivateRoute>
       }/>
 
       <Route path="*" element={<HomeRedirect />} />
