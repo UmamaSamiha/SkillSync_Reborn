@@ -1,5 +1,4 @@
 import os
-import requests
 from datetime import datetime, timezone
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
@@ -9,8 +8,6 @@ from app.models import User, Role, Topic, UserTopicProgress, TopicPrerequisite
 from app.utils.helpers import success, error, get_current_user
 
 edit_tracking_bp = Blueprint("edit_tracking", __name__)
-
-HF_API_KEY = os.getenv("HF_API_KEY", "")
 
 
 class Submission(db.Model):
@@ -236,7 +233,6 @@ def score_submission(sub_id):
     submission.scored_by     = user.id
     submission.scored_at     = datetime.now(timezone.utc)
 
-    # Check if this score unlocks the prerequisite topic
     unlocked = False
     student  = submission.user
 
@@ -272,61 +268,3 @@ def score_submission(sub_id):
         },
         f"✅ Score {score} applied to submission."
     )
-
-
-@edit_tracking_bp.route("/analyze/<int:sub_id>", methods=["POST"])
-@jwt_required()
-def analyze_submission(sub_id):
-    user = get_current_user()
-    if not user or user.role not in (Role.ADMIN, Role.TEACHER):
-        return error("Admin or Teacher access required", 403)
-
-    submission = Submission.query.get(sub_id)
-    if not submission:
-        return error("Submission not found", 404)
-
-    if not submission.final_text or len(submission.final_text.strip()) < 10:
-        return error("Text too short to analyze", 400)
-
-    if not HF_API_KEY:
-        return error("HuggingFace API key not configured", 500)
-
-    try:
-        from huggingface_hub import InferenceClient
-
-        client = InferenceClient(
-            provider="hf-inference",
-            api_key=HF_API_KEY,
-        )
-
-        result = client.zero_shot_classification(
-            submission.final_text,
-            candidate_labels=["human written", "AI generated"],
-            model="facebook/bart-large-mnli",
-        )
-
-        ai_score = 0.0
-        if isinstance(result, list):
-            for item in result:
-                if item.label == "AI generated":
-                    ai_score = round(item.score, 4)
-                    break
-        else:
-            for label, score in zip(result.labels, result.scores):
-                if label == "AI generated":
-                    ai_score = round(score, 4)
-                    break
-
-        submission.ai_score   = ai_score
-        submission.ai_flagged = ai_score >= 0.70
-        db.session.commit()
-
-        return success({
-            "submission_id": submission.id,
-            "ai_score":      ai_score,
-            "ai_flagged":    submission.ai_flagged,
-            "label": "⚠️ Likely AI-generated" if submission.ai_flagged else "✅ Likely human-written",
-        }, "Analysis complete")
-
-    except Exception as e:
-        return error(f"Analysis failed: {str(e)}", 500)
