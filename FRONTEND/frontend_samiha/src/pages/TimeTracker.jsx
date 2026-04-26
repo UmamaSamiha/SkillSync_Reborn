@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Square, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Play, Square, Clock, TrendingUp, TrendingDown, Minus,
+         CheckCircle2, Circle, Trash2, AlertTriangle, BookOpen, Plus as PlusIcon } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import './TimeTracker.css';
@@ -10,7 +11,7 @@ function fmt(seconds) {
   const s = seconds % 60;
   return h > 0
     ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '00')}`;
+    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
 function WeeklyChart({ days }) {
@@ -46,17 +47,107 @@ function WeeklyChart({ days }) {
   );
 }
 
+function DueSoonPanel({ assignments }) {
+  const now     = new Date();
+  const in7days = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const isDone  = a => ['graded', 'submitted'].includes(a.student_submission?.status);
+
+  const overdue  = assignments.filter(a => a.due_date && new Date(a.due_date) < now && !isDone(a));
+  const upcoming = assignments
+    .filter(a => {
+      if (!a.due_date) return false;
+      const due = new Date(a.due_date);
+      return due >= now && due <= in7days && !isDone(a);
+    })
+    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
+
+  return (
+    <div className="card due-panel">
+      <h3 className="due-panel-title mb-12" style={{ fontFamily: 'var(--font-display)' }}>
+        <AlertTriangle size={15} /> Deadlines
+      </h3>
+      {overdue.map(a => (
+        <div key={a.id} className="due-item">
+          <span className="due-title">{a.title}</span>
+          <span className="due-tag overdue-tag">Overdue</span>
+        </div>
+      ))}
+      {upcoming.map(a => {
+        const daysLeft = Math.ceil((new Date(a.due_date) - now) / 86400000);
+        return (
+          <div key={a.id} className="due-item">
+            <span className="due-title">{a.title}</span>
+            <span className={`due-tag ${daysLeft <= 2 ? 'urgent-tag' : ''}`}>
+              {daysLeft === 0 ? 'Today' : daysLeft === 1 ? 'Tomorrow' : `${daysLeft}d`}
+            </span>
+          </div>
+        );
+      })}
+      {overdue.length === 0 && upcoming.length === 0 && (
+        <p className="text-sm text-muted">No deadlines this week.</p>
+      )}
+    </div>
+  );
+}
+
+function TodoPanel() {
+  const [todos, setTodos] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ss_todos') || '[]'); }
+    catch { return []; }
+  });
+  const [input, setInput] = useState('');
+
+  const save = updated => {
+    setTodos(updated);
+    localStorage.setItem('ss_todos', JSON.stringify(updated));
+  };
+
+  const add = () => {
+    if (!input.trim()) return;
+    save([...todos, { id: Date.now(), text: input.trim(), done: false }]);
+    setInput('');
+  };
+
+  return (
+    <div className="card todo-panel">
+      <h3 className="todo-panel-title mb-12" style={{ fontFamily: 'var(--font-display)' }}>
+        <BookOpen size={15} /> To-Do
+      </h3>
+      <div className="todo-input-row">
+        <input className="input" value={input} onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && add()} placeholder="Add a task…" />
+        <button className="btn btn-primary btn-sm" onClick={add}><PlusIcon size={14} /></button>
+      </div>
+      <div className="todo-list mt-12">
+        {todos.length === 0 && <p className="text-sm text-muted">Nothing here yet.</p>}
+        {todos.map(t => (
+          <div key={t.id} className={`todo-item ${t.done ? 'done' : ''}`}>
+            <button className="todo-check"
+              onClick={() => save(todos.map(x => x.id === t.id ? { ...x, done: !x.done } : x))}>
+              {t.done ? <CheckCircle2 size={15} /> : <Circle size={15} />}
+            </button>
+            <span className="todo-text">{t.text}</span>
+            <button className="todo-del" onClick={() => save(todos.filter(x => x.id !== t.id))}>
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function TimeTrackerPage() {
   const [courses,     setCourses]     = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [weekly,      setWeekly]      = useState(null);
   const [recentLogs,  setRecentLogs]  = useState([]);
 
-  const [running,    setRunning]    = useState(false);
-  const [elapsed,    setElapsed]    = useState(0);
-  const [courseId,   setCourseId]   = useState('');
-  const [assignId,   setAssignId]   = useState('');
-  const [logType,    setLogType]    = useState('study');
+  const [running,     setRunning]     = useState(false);
+  const [elapsed,     setElapsed]     = useState(0);
+  const [courseId,    setCourseId]    = useState('');
+  const [assignId,    setAssignId]    = useState('');
+  const [logType,     setLogType]     = useState('study');
   const [description, setDescription] = useState('');
 
   const intervalRef = useRef(null);
@@ -83,7 +174,6 @@ export default function TimeTrackerPage() {
   const stopTimer = async () => {
     clearInterval(intervalRef.current);
     setRunning(false);
-
     const minutes = Math.max(1, Math.round(elapsed / 60));
     try {
       await api.post('/timelogs/', {
@@ -101,33 +191,36 @@ export default function TimeTrackerPage() {
     setElapsed(0);
   };
 
-  const totalHrs = weekly ? Math.round(weekly.total_minutes / 60 * 10) / 10 : 0;
-  const lastHrs  = weekly ? Math.round(weekly.last_week_minutes / 60 * 10) / 10 : 0;
-  const diff     = totalHrs - lastHrs;
+  const totalHrs  = weekly ? Math.round(weekly.total_minutes / 60 * 10) / 10 : 0;
+  const lastHrs   = weekly ? Math.round(weekly.last_week_minutes / 60 * 10) / 10 : 0;
+  const diff      = totalHrs - lastHrs;
   const TrendIcon = diff > 0 ? TrendingUp : diff < 0 ? TrendingDown : Minus;
   const trendColor = diff > 0 ? 'var(--color-success)' : diff < 0 ? 'var(--color-danger)' : 'var(--color-text-muted)';
 
+  const pendingAssignments = assignments.filter(
+    a => !['graded', 'submitted'].includes(a.student_submission?.status)
+  );
+
   return (
     <div className="timetracker-page">
-      <h1 style={{ fontFamily: 'var(--font-display)', marginBottom: 4 }}>Time Tracker</h1>
-      <p className="text-muted text-sm mb-24">Track study and assignment time to measure your weekly productivity.</p>
+      <h1 style={{ fontFamily: 'var(--font-display)', marginBottom: 4 }}>Study Hub</h1>
+      <p className="text-muted text-sm mb-24">Log your focus sessions, track deadlines, and stay on top of your work.</p>
 
       <div className="tracker-grid">
         {/* ── Timer Panel ─────────────────────────── */}
         <div className="card timer-panel">
           <h3 className="mb-16" style={{ fontFamily: 'var(--font-display)' }}>Start Session</h3>
-
           <div className="timer-display">{fmt(elapsed)}</div>
-
           <div className="timer-controls mb-16">
             <div className="login-field">
               <label>Type</label>
-              <select className="input" value={logType} onChange={e => { setLogType(e.target.value); setCourseId(''); setAssignId(''); }} disabled={running}>
+              <select className="input" value={logType}
+                onChange={e => { setLogType(e.target.value); setCourseId(''); setAssignId(''); }}
+                disabled={running}>
                 <option value="study">Course Study</option>
                 <option value="assignment">Assignment Writing</option>
               </select>
             </div>
-
             {logType === 'study' && (
               <div className="login-field">
                 <label>Course</label>
@@ -137,24 +230,21 @@ export default function TimeTrackerPage() {
                 </select>
               </div>
             )}
-
             {logType === 'assignment' && (
               <div className="login-field">
                 <label>Assignment</label>
                 <select className="input" value={assignId} onChange={e => setAssignId(e.target.value)} disabled={running}>
                   <option value="">— Select assignment —</option>
-                  {assignments.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+                  {pendingAssignments.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
                 </select>
               </div>
             )}
-
             <div className="login-field">
               <label>Note (optional)</label>
               <input className="input" value={description} onChange={e => setDescription(e.target.value)}
                 placeholder="What are you working on?" disabled={running} />
             </div>
           </div>
-
           {!running
             ? <button className="btn btn-primary w-full" onClick={startTimer}><Play size={15} /> Start</button>
             : <button className="btn btn-danger w-full" onClick={stopTimer}><Square size={15} /> Stop & Save</button>
@@ -170,7 +260,6 @@ export default function TimeTrackerPage() {
               {diff > 0 ? '+' : ''}{diff.toFixed(1)}h vs last week
             </div>
           </div>
-
           <div className="grid-2 mb-16" style={{ gap: 12 }}>
             <div className="stat-card">
               <div className="stat-icon"><Clock size={18} /></div>
@@ -183,14 +272,18 @@ export default function TimeTrackerPage() {
               <div><div className="stat-value">{lastHrs}h</div><div className="stat-label">Last week</div></div>
             </div>
           </div>
-
           {weekly?.days && <WeeklyChart days={weekly.days} />}
-
           <div className="chart-legend">
             <span className="legend-dot" style={{ background: 'var(--color-primary)' }} /> Study
             <span className="legend-dot" style={{ background: 'var(--color-accent)', marginLeft: 16 }} /> Assignment
           </div>
         </div>
+      </div>
+
+      {/* ── Deadlines + To-Do ─────────────────────── */}
+      <div className="tracker-grid mt-20">
+        <DueSoonPanel assignments={assignments} />
+        <TodoPanel />
       </div>
 
       {/* ── Recent Logs ───────────────────────────── */}

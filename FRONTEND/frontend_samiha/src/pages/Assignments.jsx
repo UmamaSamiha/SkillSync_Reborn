@@ -154,7 +154,19 @@ export default function AssignmentsPage() {
   const fetchAssignments = async () => {
     try {
       const res = await api.get('/assignments/?per_page=50');
-      setAssignments(res.data.data.items || []);
+      const assignments = res.data.data.items || [];
+      setAssignments(assignments);
+
+      // For students, initialize submissions with student_submission data from assignments
+      if (!canManage) {
+        const submissionsMap = {};
+        assignments.forEach(a => {
+          if (a.student_submission) {
+            submissionsMap[a.id] = a.student_submission;
+          }
+        });
+        setSubmissions(submissionsMap);
+      }
     } catch {
       toast.error('Failed to load assignments');
     } finally {
@@ -270,10 +282,23 @@ export default function AssignmentsPage() {
 
   const handleGrade = async (submissionId, assignmentId) => {
     const d = gradeData[submissionId];
+    const assignment = assignments.find(a => a.id === assignmentId);
+
     if (!d?.score) { toast.error('Enter a score'); return; }
+
+    const score = parseFloat(d.score);
+    if (isNaN(score) || score < 0) {
+      toast.error('Score must be a valid number >= 0');
+      return;
+    }
+    if (score > assignment.max_score) {
+      toast.error(`Score cannot exceed ${assignment.max_score}`);
+      return;
+    }
+
     try {
       await api.put(`/assignments/submissions/${submissionId}/grade`, {
-        score:    parseFloat(d.score),
+        score,
         feedback: d.feedback || '',
       });
       toast.success('Graded — student notified.');
@@ -482,7 +507,7 @@ export default function AssignmentsPage() {
                       )}
                       {sub?.status === 'graded' && (
                         <div className="grade-box">
-                          <p><strong>Score:</strong> {sub.score} / {a.max_score}</p>
+                          <p><strong>Score:</strong> {sub.score !== null && sub.score !== undefined ? sub.score : '—'} / {a.max_score}</p>
                           {sub.feedback && <p><strong>Feedback:</strong> {sub.feedback}</p>}
                         </div>
                       )}
@@ -577,9 +602,23 @@ export default function AssignmentsPage() {
                               <div className="flex-center gap-12">
                                 <input className="input" type="number"
                                   placeholder={`Score (max ${a.max_score})`} style={{ width: 140 }}
-                                  value={gradeData[s.id]?.score || ''}
-                                  onChange={e => setGradeData(prev => ({ ...prev,
-                                    [s.id]: { ...prev[s.id], score: e.target.value } }))} />
+                                  max={a.max_score}
+                                  min="0"
+                                  value={gradeData[s.id]?.score ?? ''}
+                                  onChange={e => {
+                                    const raw = e.target.value;
+                                    if (raw === '') {
+                                      setGradeData(prev => ({ ...prev, [s.id]: { ...prev[s.id], score: '' } }));
+                                      return;
+                                    }
+                                    const num = parseFloat(raw);
+                                    if (!isNaN(num) && num > a.max_score) {
+                                      toast.error(`Score cannot exceed ${a.max_score}`);
+                                      return;
+                                    }
+                                    setGradeData(prev => ({ ...prev,
+                                      [s.id]: { ...prev[s.id], score: raw } }));
+                                  }} />
                                 <input className="input" placeholder="Feedback (optional)"
                                   value={gradeData[s.id]?.feedback || ''}
                                   onChange={e => setGradeData(prev => ({ ...prev,
