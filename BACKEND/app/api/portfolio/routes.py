@@ -6,7 +6,7 @@ Student portfolio: skills, featured projects, contribution stats.
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from app import db
-from app.models import Portfolio, PortfolioProject
+from app.models import Portfolio, PortfolioProject, User
 from app.utils.helpers import success, error, get_current_user, validate_required
 
 portfolio_bp = Blueprint("portfolio", __name__)
@@ -16,9 +16,15 @@ portfolio_bp = Blueprint("portfolio", __name__)
 def get_portfolio(user_id):
     p = Portfolio.query.filter_by(user_id=user_id).first()
     if not p:
-        return error("Portfolio not found", 404)
+        # Auto-create empty portfolio on first visit
+        p = Portfolio(user_id=user_id, bio='', github_url='', linkedin_url='', skills=[])
+        db.session.add(p)
+        db.session.commit()
+    user = User.query.get(user_id)
     data = p.to_dict()
-    data["projects"] = [proj.to_dict() for proj in p.projects.all()]
+    data["full_name"] = user.full_name if user else ""
+    data["role"]      = user.role      if user else ""
+    data["projects"]  = [proj.to_dict() for proj in p.projects.all()]
     return success(data)
 
 @portfolio_bp.route("/<user_id>", methods=["PUT"])
@@ -37,7 +43,12 @@ def update_portfolio(user_id):
     if "linkedin_url" in data: p.linkedin_url = data["linkedin_url"]
     if "skills"       in data: p.skills       = data["skills"]
     db.session.commit()
-    return success(p.to_dict(), "Portfolio updated")
+    user = User.query.get(user_id)
+    result = p.to_dict()
+    result["full_name"] = user.full_name if user else ""
+    result["role"]      = user.role      if user else ""
+    result["projects"]  = [proj.to_dict() for proj in p.projects.all()]
+    return success(result, "Portfolio updated")
 
 @portfolio_bp.route("/<user_id>/projects", methods=["POST"])
 @jwt_required()
@@ -65,3 +76,16 @@ def add_portfolio_project(user_id):
     db.session.add(proj)
     db.session.commit()
     return success(proj.to_dict(), "Project added", 201)
+
+@portfolio_bp.route("/<user_id>/projects/<project_id>", methods=["DELETE"])
+@jwt_required()
+def delete_portfolio_project(user_id, project_id):
+    current = get_current_user()
+    if current.id != user_id:
+        return error("Forbidden", 403)
+    proj = PortfolioProject.query.filter_by(id=project_id).first()
+    if not proj:
+        return error("Project not found", 404)
+    db.session.delete(proj)
+    db.session.commit()
+    return success(None, "Project deleted")
