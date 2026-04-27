@@ -61,6 +61,9 @@ def create_app(config_name: str = None) -> Flask:
     from app.api.notifications.routes import notifications_bp
     from app.api.courses.routes        import courses_bp
     from app.api.timelogs.routes       import timelogs_bp
+    from app.api.curriculum.routes    import curriculum_bp
+    from app.api.question_bank.routes import qbank_bp
+    from app.api.edit_tracking.routes import edit_tracking_bp
     # ── NEW: AI detection blueprint ───────────────────────────────
     from app.api.ai.routes             import ai_bp
 
@@ -76,6 +79,9 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
     app.register_blueprint(courses_bp,      url_prefix="/api/courses")
     app.register_blueprint(timelogs_bp,     url_prefix="/api/timelogs")
+    app.register_blueprint(curriculum_bp,    url_prefix="/api/curriculum")
+    app.register_blueprint(qbank_bp,         url_prefix="/api/question-bank")
+    app.register_blueprint(edit_tracking_bp, url_prefix="/api/edit-tracking")
     # ── NEW ───────────────────────────────────────────────────────
     app.register_blueprint(ai_bp,           url_prefix="/api/ai")
 

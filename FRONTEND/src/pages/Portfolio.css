@@ -1,0 +1,253 @@
+.pf-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.pf-loading {
+  text-align: center;
+  color: var(--color-muted);
+  padding: 4rem;
+}
+
+/* ── Header ── */
+.pf-header {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+.pf-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pf-header-info {
+  flex: 1;
+}
+
+.pf-header-info h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 0.2rem;
+}
+
+.pf-role {
+  font-size: 0.78rem;
+  text-transform: capitalize;
+  color: var(--color-muted);
+  background: var(--color-border);
+  padding: 0.15rem 0.6rem;
+  border-radius: 10px;
+}
+
+.pf-links {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.pf-links a {
+  font-size: 0.82rem;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.pf-links a:hover { text-decoration: underline; }
+
+.pf-edit-btn { margin-left: auto; }
+
+/* ── Card ── */
+.pf-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 1.4rem;
+  margin-bottom: 1.2rem;
+}
+
+.pf-card h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 1rem;
+}
+
+/* ── Section header ── */
+.pf-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+.pf-section-header h2 { margin: 0; }
+
+/* ── Form fields ── */
+.pf-field {
+  margin-bottom: 0.9rem;
+}
+
+.pf-field label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--color-muted);
+  margin-bottom: 0.35rem;
+}
+
+.pf-field input,
+.pf-field textarea {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  font-size: 0.88rem;
+  padding: 8px 12px;
+  outline: none;
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+.pf-field input:focus,
+.pf-field textarea:focus { border-color: var(--color-primary); }
+
+.pf-hint {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+  font-weight: 400;
+}
+
+.pf-skills-input-row { display: flex; gap: 0.5rem; }
+
+/* ── Tags ── */
+.pf-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.pf-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+  background: #6366f122;
+  color: #818cf8;
+  border: 1px solid #6366f155;
+}
+.pf-tag button {
+  background: none;
+  border: none;
+  color: #818cf8;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  padding: 0;
+}
+.pf-tag-view { cursor: default; }
+.pf-tag-view button { display: none; }
+.pf-tag-tech {
+  background: #22c55e22;
+  color: #22c55e;
+  border-color: #22c55e55;
+}
+
+/* ── Actions ── */
+.pf-actions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+/* ── Bio ── */
+.pf-bio {
+  color: var(--color-text);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-bottom: 0.8rem;
+}
+
+.pf-empty-hint {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ── Add project form ── */
+.pf-add-project {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Projects grid ── */
+.pf-projects {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.pf-project-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  transition: border-color 0.2s;
+}
+.pf-project-card:hover { border-color: var(--color-primary); }
+
+.pf-project-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.35rem;
+}
+
+.pf-project-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+.pf-project-header h3 a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.pf-project-header h3 a:hover { text-decoration: underline; }
+
+.pf-project-desc {
+  font-size: 0.83rem;
+  color: var(--color-muted);
+  margin-bottom: 0.5rem;
+  line-height: 1.5;
+}
+
+.pf-delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+.pf-delete-btn:hover { opacity: 1; }
