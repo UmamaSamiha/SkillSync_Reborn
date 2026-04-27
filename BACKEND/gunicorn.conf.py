@@ -1,0 +1,10 @@
+bind            = "0.0.0.0:10000"
+workers         = 1
+worker_class    = "sync"
+timeout         = 120
+keepalive       = 5
+preload_app     = False          # False so crashes show full traceback
+capture_output  = True           # Route Python stdout/stderr through gunicorn log
+loglevel        = "info"
+accesslog       = "-"
+errorlog        = "-"
