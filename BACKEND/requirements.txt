@@ -16,31 +16,16 @@ cryptography==42.0.2
 
 # API & Serialization
 Flask-CORS==4.0.0
-marshmallow==3.21.0
-Flask-Marshmallow==1.2.0
-marshmallow-sqlalchemy==1.0.0
 
 # Validation
 email-validator==2.1.0.post1
 bleach==6.1.0
-
-# File Handling
-Pillow==10.2.0
 
 # Notifications
 Flask-Mail==0.9.1
 
 # Certificate Generation
 reportlab==4.1.0
-qrcode==7.4.2
-
-# AI Detection
-scikit-learn==1.4.0
-nltk==3.8.1
-
-# Analytics & Data
-pandas==2.2.0
-numpy==1.26.4
 
 # Environment & Config
 python-dotenv==1.0.1
