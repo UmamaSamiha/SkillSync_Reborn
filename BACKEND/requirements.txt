@@ -1,7 +1,5 @@
-# SkillSync Backend Dependencies
 # Core
 Flask==3.0.2
-Flask-Blueprints==1.0.1
 Werkzeug==3.0.1
 
 # Database
@@ -28,21 +26,17 @@ bleach==6.1.0
 
 # File Handling
 Pillow==10.2.0
-python-magic==0.4.27
 
-# Task Queue & Notifications
-celery==5.3.6
-redis==5.0.1
+# Notifications
 Flask-Mail==0.9.1
 
 # Certificate Generation
 reportlab==4.1.0
 qrcode==7.4.2
 
-# AI Detection (similarity)
+# AI Detection
 scikit-learn==1.4.0
 nltk==3.8.1
-difflib2==1.0.0
 
 # Analytics & Data
 pandas==2.2.0
@@ -50,14 +44,6 @@ numpy==1.26.4
 
 # Environment & Config
 python-dotenv==1.0.1
-
-# Testing
-pytest==8.0.2
-pytest-flask==1.3.0
-factory-boy==3.3.0
-
-# Development
-flask-shell-ipython==0.5.1
 
 # Production server
 gunicorn==21.2.0
