@@ -58,3 +58,6 @@ factory-boy==3.3.0
 
 # Development
 flask-shell-ipython==0.5.1
+
+# Production server
+gunicorn==21.2.0
