@@ -28,7 +28,7 @@ Flask-Mail==0.9.1
 reportlab==4.1.0
 
 # AI
-anthropic==0.25.0
+anthropic>=0.40.0
 
 # Environment & Config
 python-dotenv==1.0.1
