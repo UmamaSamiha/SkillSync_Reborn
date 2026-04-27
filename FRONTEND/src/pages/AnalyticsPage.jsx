@@ -75,11 +75,6 @@ export default function AnalyticsPage() {
   const [fbLoading,   setFbLoading]   = useState(false);
   const [error,       setError]       = useState("");
 
-  useEffect(() => {
-    if (user?.id) loadAll();
-  }, [user, loadAll]);
-
-
   const loadAll = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -96,6 +91,10 @@ export default function AnalyticsPage() {
     }
     setLoading(false);
   }, [user]);
+
+  useEffect(() => {
+    if (user?.id) loadAll();
+  }, [user, loadAll]);
 
   async function loadFeedback() {
     if (feedback) return;

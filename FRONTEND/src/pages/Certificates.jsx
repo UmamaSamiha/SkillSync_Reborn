@@ -12,10 +12,6 @@ export default function Certificates() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (user?.id) fetchCertificates();
-  }, [user, fetchCertificates]);
-
   const fetchCertificates = useCallback(async () => {
     setLoading(true);
     try {
@@ -26,6 +22,10 @@ export default function Certificates() {
     }
     setLoading(false);
   }, [user]);
+
+  useEffect(() => {
+    if (user?.id) fetchCertificates();
+  }, [user, fetchCertificates]);
 
   async function handleGenerate() {
     setGenerating(true);
