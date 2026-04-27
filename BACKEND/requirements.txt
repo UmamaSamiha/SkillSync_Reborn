@@ -30,6 +30,9 @@ reportlab==4.1.0
 # AI
 anthropic>=0.40.0
 
+# HTTP
+requests==2.31.0
+
 # Environment & Config
 python-dotenv==1.0.1
 
