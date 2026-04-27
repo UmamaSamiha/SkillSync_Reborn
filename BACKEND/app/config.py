@@ -76,13 +76,8 @@ class ProductionConfig(BaseConfig):
     TESTING = False
 
     # Force PostgreSQL in production
-    @property
-    def SQLALCHEMY_DATABASE_URI(self):
-        uri = os.getenv("DATABASE_URL")
-        if not uri:
-            raise RuntimeError("DATABASE_URL must be set in production")
-        # Heroku uses postgres:// but SQLAlchemy needs postgresql://
-        return uri.replace("postgres://", "postgresql://", 1)
+    uri = os.getenv("DATABASE_URL", "")
+    SQLALCHEMY_DATABASE_URI = uri.replace("postgres://", "postgresql://", 1) if uri else None
 
 
 class TestingConfig(BaseConfig):
