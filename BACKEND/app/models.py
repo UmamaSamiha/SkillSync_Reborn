@@ -678,14 +678,16 @@ class AnushkaQuestion(db.Model):
 
     def to_dict(self):
         return {
-            "id":          self.id,
-            "bank_id":     self.bank_id,
-            "text":        self.text,
-            "q_type":      self.q_type,
-            "difficulty":  self.difficulty,
-            "options":     self.options,
-            "correct":     self.correct,
-            "explanation": self.explanation,
+            "id":             self.id,
+            "bank_id":        self.bank_id,
+            "text":           self.text,
+            "q_type":         self.q_type,
+            "question_type":  self.q_type,
+            "difficulty":     self.difficulty,
+            "options":        self.options,
+            "correct":        self.correct,
+            "correct_answer": self.correct,
+            "explanation":    self.explanation,
         }
 
 

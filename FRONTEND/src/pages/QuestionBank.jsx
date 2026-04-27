@@ -181,7 +181,7 @@ function TeacherView({ bank, questions, onDelete, showQForm, onCancelAdd, onQues
     };
     setSaving(true);
     try {
-      await api.post(`/question-bank/banks/${bank.id}/questions`, payload);
+      await api.post(`/question-bank/${bank.id}/questions`, payload);
       toast.success('Question added!');
       reset();
       onQuestionAdded();
@@ -294,7 +294,7 @@ export default function QuestionBankPage() {
 
   const loadBanks = () => {
     setLoadingBanks(true);
-    api.get('/question-bank/banks')
+    api.get('/question-bank')
       .then(res => setBanks(res.data.data || []))
       .catch(() => toast.error('Could not load banks'))
       .finally(() => setLoadingBanks(false));
@@ -306,7 +306,7 @@ export default function QuestionBankPage() {
     setActiveBank(bank);
     setShowQForm(false);
     setLoadingQs(true);
-    api.get(`/question-bank/banks/${bank.id}/questions`)
+    api.get(`/question-bank/${bank.id}/questions`)
       .then(res => setQuestions(res.data.data || []))
       .catch(() => toast.error('Could not load questions'))
       .finally(() => setLoadingQs(false));
@@ -316,7 +316,7 @@ export default function QuestionBankPage() {
     if (!bankTitle.trim()) return toast.error('Title is required');
     setSaving(true);
     try {
-      await api.post('/question-bank/banks', { title: bankTitle.trim(), description: bankDesc.trim() });
+      await api.post('/question-bank', { title: bankTitle.trim(), description: bankDesc.trim() });
       toast.success('Bank created!');
       setBankTitle(''); setBankDesc(''); setShowBankForm(false);
       loadBanks();
@@ -328,7 +328,7 @@ export default function QuestionBankPage() {
   const handleDeleteBank = async (bankId) => {
     if (!window.confirm('Delete this entire bank and all its questions?')) return;
     try {
-      await api.delete(`/question-bank/banks/${bankId}`);
+      await api.delete(`/question-bank/${bankId}`);
       toast.success('Bank deleted');
       if (activeBank?.id === bankId) { setActiveBank(null); setQuestions([]); }
       loadBanks();
@@ -338,7 +338,7 @@ export default function QuestionBankPage() {
   const handleDeleteQuestion = async (qId) => {
     if (!window.confirm('Delete this question?')) return;
     try {
-      await api.delete(`/question-bank/banks/${activeBank.id}/questions/${qId}`);
+      await api.delete(`/question-bank/${activeBank.id}/questions/${qId}`);
       toast.success('Question deleted');
       setQuestions(prev => prev.filter(q => q.id !== qId));
     } catch { toast.error('Delete failed'); }
@@ -346,7 +346,7 @@ export default function QuestionBankPage() {
 
   const reloadQuestions = () => {
     if (!activeBank) return;
-    api.get(`/question-bank/banks/${activeBank.id}/questions`)
+    api.get(`/question-bank/${activeBank.id}/questions`)
       .then(res => setQuestions(res.data.data || []));
   };
 

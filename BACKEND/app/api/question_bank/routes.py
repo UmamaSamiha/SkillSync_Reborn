@@ -7,7 +7,7 @@ from app.utils.helpers import success, error, get_current_user
 qbank_bp = Blueprint("anushka_qbank", __name__)
 
 
-@qbank_bp.route("/", methods=["GET"])
+@qbank_bp.route("", methods=["GET"], strict_slashes=False)
 @jwt_required()
 def list_banks():
     user = get_current_user()
@@ -17,7 +17,7 @@ def list_banks():
     return success([b.to_dict() for b in banks])
 
 
-@qbank_bp.route("/", methods=["POST"])
+@qbank_bp.route("", methods=["POST"], strict_slashes=False)
 @jwt_required()
 def create_bank():
     user = get_current_user()
@@ -38,7 +38,7 @@ def create_bank():
     return success(bank.to_dict(), "Question bank created", 201)
 
 
-@qbank_bp.route("/<int:bank_id>", methods=["GET"])
+@qbank_bp.route("/<int:bank_id>", methods=["GET"], strict_slashes=False)
 @jwt_required()
 def get_bank(bank_id):
     user = get_current_user()
@@ -51,7 +51,7 @@ def get_bank(bank_id):
     return success({**bank.to_dict(), "questions": questions})
 
 
-@qbank_bp.route("/<int:bank_id>", methods=["DELETE"])
+@qbank_bp.route("/<int:bank_id>", methods=["DELETE"], strict_slashes=False)
 @jwt_required()
 def delete_bank(bank_id):
     user = get_current_user()
@@ -65,7 +65,20 @@ def delete_bank(bank_id):
     return success(None, "Question bank deleted")
 
 
-@qbank_bp.route("/<int:bank_id>/questions", methods=["POST"])
+@qbank_bp.route("/<int:bank_id>/questions", methods=["GET"], strict_slashes=False)
+@jwt_required()
+def get_questions(bank_id):
+    user = get_current_user()
+    if not user:
+        return error("User not found", 404)
+    bank = AnushkaQuestionBank.query.get(bank_id)
+    if not bank:
+        return error("Question bank not found", 404)
+    questions = [q.to_dict() for q in bank.questions]
+    return success(questions)
+
+
+@qbank_bp.route("/<int:bank_id>/questions", methods=["POST"], strict_slashes=False)
 @jwt_required()
 def add_question(bank_id):
     user = get_current_user()
@@ -81,10 +94,10 @@ def add_question(bank_id):
     question = AnushkaQuestion(
         bank_id     = bank_id,
         text        = text,
-        q_type      = data.get("q_type", "mcq"),
+        q_type      = data.get("question_type", data.get("q_type", "mcq")),
         difficulty  = data.get("difficulty", "beginner"),
         options     = data.get("options", []),
-        correct     = data.get("correct", ""),
+        correct     = data.get("correct_answer", data.get("correct", "")),
         explanation = data.get("explanation", ""),
     )
     db.session.add(question)
@@ -92,7 +105,7 @@ def add_question(bank_id):
     return success(question.to_dict(), "Question added", 201)
 
 
-@qbank_bp.route("/<int:bank_id>/questions/<int:question_id>", methods=["DELETE"])
+@qbank_bp.route("/<int:bank_id>/questions/<int:question_id>", methods=["DELETE"], strict_slashes=False)
 @jwt_required()
 def delete_question(bank_id, question_id):
     user = get_current_user()

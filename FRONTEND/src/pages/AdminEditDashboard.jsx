@@ -248,7 +248,7 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
     }
     setScoring(true);
     try {
-      const res = await api.post(`/edits/submission/${submission.id}/score`, { score: n });
+      const res = await api.post(`/edit-tracking/submission/${submission.id}/score`, { score: n });
       toast.success(res.data.message);
 
     const scoreNum = parseInt(score, 10);
@@ -331,7 +331,7 @@ export default function AdminEditDashboard() {
   const fetchSubmissions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.get('/edits/submissions');
+      const res = await api.get('/edit-tracking/submissions');
       setSubmissions(res.data.data || []);
     } catch {
       toast.error('Failed to load submissions');
@@ -345,7 +345,7 @@ export default function AdminEditDashboard() {
   const openSubmission = async (sub) => {
     setSelected(sub);
     try {
-      const res = await api.get(`/edits/submission/${sub.id}`);
+      const res = await api.get(`/edit-tracking/submission/${sub.id}`);
       setTimeline(res.data.data.timeline || []);
     } catch {
       toast.error('Failed to load timeline');
@@ -355,7 +355,7 @@ export default function AdminEditDashboard() {
   const handleScored = async () => {
     await fetchSubmissions();
     if (selected) {
-      const res = await api.get(`/edits/submission/${selected.id}`);
+      const res = await api.get(`/edit-tracking/submission/${selected.id}`);
       setSelected(res.data.data);
       setTimeline(res.data.data.timeline || []);
     }

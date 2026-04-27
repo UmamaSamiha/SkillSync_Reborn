@@ -25,7 +25,7 @@ export default function EditTracker() {
     if (!title.trim()) return;
     setSaving(true);
     try {
-      const res = await api.post('/edits/track', {
+      const res = await api.post('/edit-tracking/track', {
         submission_id: submissionId,
         title:         title.trim(),
         content_type:  'assignment',
@@ -67,7 +67,7 @@ export default function EditTracker() {
     if (!text.trim())  return toast.error('Please write your answer');
     setSubmitting(true);
     try {
-      await api.post('/edits/track', {
+      await api.post('/edit-tracking/track', {
         submission_id: submissionId,
         title:         title.trim(),
         content_type:  'assignment',

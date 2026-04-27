@@ -17,6 +17,7 @@ const teacherNav = [
   { to: '/notifications',  icon: Bell,          label: 'Notifications' },
   { to: '/teacher/edits',  icon: ClipboardList, label: 'Edit Tracking' },
   { to: '/teacher/topics', icon: Settings,      label: 'Topic Manager' },
+  { to: '/question-bank',  icon: HelpCircle,    label: 'Question Bank' },
 ];
 
 const adminNav = [
