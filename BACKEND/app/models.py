@@ -252,6 +252,8 @@ class Submission(db.Model):
     grader       = db.relationship("User", foreign_keys=[graded_by])
     group        = db.relationship("AssignmentGroup", back_populates="submission")
     edit_history = db.relationship("EditHistory", back_populates="submission", lazy="dynamic")
+    # ── AI scan results (one-to-many so history is kept) ──────────
+    scans        = db.relationship("SubmissionScan", back_populates="submission", lazy="dynamic")
 
     def to_dict(self):
         return {
@@ -270,6 +272,34 @@ class Submission(db.Model):
             "flagged":          self.flagged,
             "group_id":         self.group_id,
         }
+
+
+# ── NEW: SubmissionScan — stores every AI/similarity scan result ──────────────
+
+class SubmissionScan(db.Model):
+    """
+    Stores each AI + similarity detection scan for a submission.
+    Multiple scans per submission are allowed (history is kept).
+    """
+    __tablename__ = "submission_scans"
+    id               = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    submission_id    = db.Column(db.String(36), db.ForeignKey("submissions.id"), nullable=False, index=True)
+    ai_score         = db.Column(db.Numeric(5, 2), nullable=True)   # 0.00–100.00
+    similarity_score = db.Column(db.Numeric(5, 2), nullable=True)   # 0.00–100.00
+    status           = db.Column(db.String(50), default="completed")
+    scanned_at       = db.Column(db.DateTime(timezone=True), default=now_utc)
+    submission       = db.relationship("Submission", back_populates="scans")
+
+    def to_dict(self):
+        return {
+            "id":               self.id,
+            "submission_id":    self.submission_id,
+            "ai_score":         float(self.ai_score)         if self.ai_score         else None,
+            "similarity_score": float(self.similarity_score) if self.similarity_score else None,
+            "status":           self.status,
+            "scanned_at":       self.scanned_at.isoformat(),
+        }
+
 
 class EditHistory(db.Model):
     __tablename__ = "edit_history"

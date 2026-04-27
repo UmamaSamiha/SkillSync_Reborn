@@ -32,7 +32,17 @@ def project_heatmap(project_id):
     cutoff     = datetime.now(timezone.utc) - timedelta(days=days_back)
     today      = datetime.now(timezone.utc).date()
 
-    members = ProjectMember.query.filter_by(project_id=project_id, is_active=True).all()
+    members = (
+        ProjectMember.query
+        .join(User, User.id == ProjectMember.user_id)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.is_active == True,
+            User.role == "student",       # ← filters out teacher
+            User.is_active == True,
+        )
+        .all()
+    )
 
     # Activity logs for the project in the window
     logs = ActivityLog.query.filter(
@@ -121,7 +131,17 @@ def notify_inactive(project_id):
     inactive_days = int(request.args.get("inactive_days", 5))
     cutoff        = datetime.now(timezone.utc) - timedelta(days=inactive_days)
 
-    members  = ProjectMember.query.filter_by(project_id=project_id, is_active=True).all()
+    members = (
+        ProjectMember.query
+        .join(User, User.id == ProjectMember.user_id)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.is_active == True,
+            User.role == "student",
+            User.is_active == True,
+        )
+        .all()
+    )
     notified = []
 
     for m in members:

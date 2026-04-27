@@ -7,8 +7,9 @@ User profile management, project membership, avatar upload.
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 
+from sqlalchemy.orm.attributes import flag_modified
 from app import db
-from app.models import User, Project, ProjectMember
+from app.models import User, Project, ProjectMember, Notification, RiskProfile, RiskLevel
 from app.utils.helpers import (
     success, error, paginate, get_current_user,
     admin_required, teacher_or_admin, allowed_file, save_upload
@@ -41,9 +42,13 @@ def get_user(user_id):
     current = get_current_user()
     user = User.query.get_or_404(user_id)
 
-    # Students can only view their own profile unless admin/teacher
-    if current.role not in ["admin", "teacher"] and current.id != user_id:
-        return error("Forbidden", 403)
+
+
+    if current.role == "student" and str(current.id) != str(user_id):
+        if str(user.role) != "student":
+            return error("Forbidden", 403)
+    
+
 
     return success(user.to_dict())
 
@@ -140,6 +145,79 @@ def user_projects(user_id):
 
     return success(projects)
 
+
+
+
+# ── POST /api/users/<id>/remind ───────────────────────────────────────────────
+
+@users_bp.route("/<user_id>/remind", methods=["POST"])
+@jwt_required()
+def send_reminder(user_id):
+    """Send a reminder notification to a specific member (teacher/admin only)."""
+    user = User.query.get_or_404(user_id)
+    data = request.get_json(silent=True) or {}
+
+    message = data.get(
+        "message",
+        "Your instructor has sent you a reminder to stay active and keep up with your project work."
+    )
+
+    notif = Notification(
+        user_id     = user_id,
+        title       = "Reminder from Instructor",
+        message     = message,
+        type        = "system",
+        entity_type = "reminder",
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    return success({"recipient": user.full_name}, f"Reminder sent to {user.full_name}")
+
+
+# ── POST /api/users/<id>/flag-inactive ───────────────────────────────────────
+
+@users_bp.route("/<user_id>/flag-inactive", methods=["POST"])
+@jwt_required()
+def flag_inactive(user_id):
+    """Flag a member as inactive, escalate their risk to HIGH, and notify them.
+    Body: { "project_id": "..." }  (optional — flags all memberships if omitted)
+    """
+    user       = User.query.get_or_404(user_id)
+    data       = request.get_json(silent=True) or {}
+    project_id = data.get("project_id")
+
+    query = ProjectMember.query.filter_by(user_id=user_id, is_active=True)
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    memberships = query.all()
+    if not memberships:
+        return error("No active membership found for this user", 404)
+
+    # Escalate risk profile to HIGH
+    risk = RiskProfile.query.filter_by(user_id=user_id).first()
+    if risk:
+        risk.risk_level = RiskLevel.HIGH
+        flags = list(risk.flags or [])
+        if "manually_flagged_inactive" not in flags:
+            flags.append("manually_flagged_inactive")
+        risk.flags = flags
+        flag_modified(risk, "flags")
+
+    # In-app notification to the flagged member
+    notif = Notification(
+        user_id     = user_id,
+        title       = "You have been flagged as inactive",
+        message     = "Your instructor has marked you as inactive. Please re-engage with your project as soon as possible.",
+        type        = "warning",
+        entity_type = "project",
+        entity_id   = project_id,
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+    return success({"flagged": user.full_name}, f"{user.full_name} flagged as inactive")
 
 # ── DELETE /api/users/<id> ────────────────────────────────────────────────────
 
