@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
-import config from '../config';
+
 
 export default function Certificates() {
   const { user } = useAuth();
@@ -14,7 +14,7 @@ export default function Certificates() {
 
   useEffect(() => {
     if (user?.id) fetchCertificates();
-  }, [user]);
+  }, [user, fetchCertificates]);
 
   async function fetchCertificates() {
     setLoading(true);

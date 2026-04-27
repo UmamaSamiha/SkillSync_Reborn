@@ -35,7 +35,7 @@ export default function NotificationsPage() {
     }
   };
 
-  useEffect(() => { fetchNotifications(); /* eslint-disable-next-line */ }, [filter]);
+  useEffect(() => { fetchNotifications(); }, [filter, fetchNotifications]);
 
   const markRead = async (id) => {
     try {

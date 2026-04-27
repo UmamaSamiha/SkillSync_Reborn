@@ -41,7 +41,6 @@ export default function FocusPage() {
   const secs  = timeLeft % 60;
 
   const isWork    = modeIdx === 0;
-  const isRunning = timerState === "RUNNING" || timerState === "BREAK";
 
   // ── Tick ──────────────────────────────────────────────────────
   useEffect(() => {

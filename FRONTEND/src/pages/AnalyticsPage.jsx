@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (user?.id) loadAll();
-  }, [user]);
+  }, [user, loadAll]);
 
   async function loadAll() {
     setLoading(true);

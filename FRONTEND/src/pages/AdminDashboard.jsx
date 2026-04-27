@@ -189,7 +189,7 @@ export default function AdminDashboard() {
   const [alertMsg, setAlertMsg]                 = useState("");
   const [scanningId, setScanningId] = useState(null);
   const [submissions, setSubmissions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+
   const [engagementData, setEngagementData] = useState([]);
   const [engMsg, setEngMsg]                 = useState("");
   const [calcingAll, setCalcingAll]         = useState(false);
@@ -450,7 +450,6 @@ export default function AdminDashboard() {
   const btn = (variant = "primary") => ({
     padding: "8px 18px",
     borderRadius: 10,
-    border: "none",
     cursor: "pointer",
     fontSize: "0.82rem",
     fontWeight: 700,

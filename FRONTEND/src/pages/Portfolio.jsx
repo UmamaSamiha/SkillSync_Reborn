@@ -67,7 +67,7 @@ export default function PortfolioPage() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, [userId]);
+  useEffect(() => { load(); }, [userId, load]);
 
   // ── Save profile ──────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
