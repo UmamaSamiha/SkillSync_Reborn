@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
@@ -16,7 +16,7 @@ export default function Certificates() {
     if (user?.id) fetchCertificates();
   }, [user, fetchCertificates]);
 
-  async function fetchCertificates() {
+  const fetchCertificates = useCallback(async () => {
     setLoading(true);
     try {
       const res = await api.get(`/certificates/user/${user.id}`);
@@ -25,7 +25,7 @@ export default function Certificates() {
       setError('Could not load certificates.');
     }
     setLoading(false);
-  }
+  }, [user]);
 
   async function handleGenerate() {
     setGenerating(true);

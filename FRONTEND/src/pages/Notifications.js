@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Bell, Check, CheckCheck, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -18,7 +18,7 @@ export default function NotificationsPage() {
   const [filter,        setFilter]        = useState('all');
   const [loading,       setLoading]       = useState(true);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ per_page: '50' });
@@ -33,9 +33,9 @@ export default function NotificationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
 
-  useEffect(() => { fetchNotifications(); }, [filter, fetchNotifications]);
+  useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
   const markRead = async (id) => {
     try {

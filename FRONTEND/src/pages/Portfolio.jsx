@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
@@ -29,7 +29,7 @@ export default function PortfolioPage() {
   const [projTech,       setProjTech]       = useState('');
   const [saving,         setSaving]         = useState(false);
 
-  const load = () => {
+  const load = useCallback(() => {
     setLoading(true);
     api.get(`/portfolio/${userId}`)
       .then(res => {
@@ -42,7 +42,6 @@ export default function PortfolioPage() {
       })
       .catch((err) => {
         if (err.response?.status === 404) {
-          // Auto-create empty portfolio for this user
           api.put(`/portfolio/${userId}`, {
             bio: '', github_url: '', linkedin_url: '', skills: []
           }).then(() => {
@@ -65,7 +64,7 @@ export default function PortfolioPage() {
         }
       })
       .finally(() => setLoading(false));
-  };
+  }, [userId, me]);
 
   useEffect(() => { load(); }, [userId, load]);
 

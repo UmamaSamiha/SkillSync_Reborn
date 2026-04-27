@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
 
@@ -79,7 +79,8 @@ export default function AnalyticsPage() {
     if (user?.id) loadAll();
   }, [user, loadAll]);
 
-  async function loadAll() {
+
+  const loadAll = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
@@ -94,7 +95,7 @@ export default function AnalyticsPage() {
       setError("Could not load analytics data.");
     }
     setLoading(false);
-  }
+  }, [user]);
 
   async function loadFeedback() {
     if (feedback) return;
