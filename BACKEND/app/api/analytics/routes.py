@@ -134,7 +134,17 @@ def weekly_productivity(user_id):
 @analytics_bp.route("/contribution/<project_id>", methods=["GET"])
 @jwt_required()
 def contribution_breakdown(project_id):
-    members = ProjectMember.query.filter_by(project_id=project_id, is_active=True).all()
+    members = (
+        ProjectMember.query
+        .join(User, User.id == ProjectMember.user_id)
+        .filter(
+            ProjectMember.project_id == project_id,
+            ProjectMember.is_active == True,
+            User.role == "student",          # ← add this
+            User.is_active == True,          # ← and this
+        )
+        .all()
+    )
 
     action_types  = ["file_upload", "submission", "forum_post", "quiz_attempt", "resource_access"]
     total_actions = 0
@@ -362,3 +372,70 @@ def _letter_grade(avg: float) -> str:
     if avg >= 60: return "C+"
     if avg >= 55: return "C"
     return "F"
+
+# ── ENGAGEMENT CALCULATE (single user) ────────────────────────────
+# Added from tehmina-features: POST /api/analytics/engagement/calculate/<user_id>
+
+def _require_admin_or_teacher(current) -> bool:
+    if not current:
+        return False
+    return str(current.role) in ("admin", "teacher")
+
+
+@analytics_bp.route("/engagement/calculate/<user_id>", methods=["POST"])
+@jwt_required()
+def calculate_engagement_one(user_id):
+    current = get_current_user()
+    if not _check_access(current, user_id):
+        return error("Forbidden", 403)
+    project_id = request.args.get("project_id") or None
+    from app.services.engagement_engine import calculate_engagement
+    result = calculate_engagement(user_id, project_id=project_id)
+    return success({"message": "Engagement score calculated", "score": result})
+
+
+@analytics_bp.route("/engagement/calculate-all", methods=["POST"])
+@jwt_required()
+def calculate_engagement_all():
+    """Recalculate current-week engagement for every active student. Admin/teacher only."""
+    current = get_current_user()
+    if not _require_admin_or_teacher(current):
+        return error("Forbidden — admin or teacher only", 403)
+    project_id = request.args.get("project_id") or None
+    from app.services.engagement_engine import calculate_all_engagement
+    results = calculate_all_engagement(project_id=project_id)
+    success_count = sum(1 for r in results if "error" not in r)
+    return success({
+        "message":       f"Calculated for {success_count} students",
+        "success_count": success_count,
+        "results":       results,
+    })
+
+
+@analytics_bp.route("/engagement-all", methods=["GET"])
+@jwt_required()
+def engagement_all_students():
+    """Return latest engagement score for every active student. Admin/teacher only."""
+    from app.models import Role
+    current = get_current_user()
+    if not _require_admin_or_teacher(current):
+        return error("Forbidden — admin or teacher only", 403)
+    students = User.query.filter_by(role=Role.STUDENT, is_active=True).all()
+    result = []
+    for s in students:
+        latest = (
+            EngagementScore.query
+            .filter_by(user_id=s.id)
+            .order_by(EngagementScore.week_start.desc())
+            .first()
+        )
+        result.append({
+            "user": s.to_dict(),
+            "score": latest.to_dict() if latest else {
+                "week_start": None, "forum_score": 0,
+                "submission_score": 0, "resource_score": 0,
+                "quiz_score": 0, "total_score": 0,
+            },
+        })
+    result.sort(key=lambda x: x["score"]["total_score"], reverse=True)
+    return success(result)

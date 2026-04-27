@@ -11,6 +11,9 @@ import CurriculumPage from './pages/Curriculum';
 import PortfolioPage from './pages/Portfolio';
 import QuestionBankPage from './pages/QuestionBank';
 import EditTracker from './pages/EditTracker';
+import HeatmapPage from './pages/Heatmap';
+import FocusPage from './pages/Focus';
+import HistoryPage from './pages/History';
 
 function Layout({ children }) {
   return (
@@ -55,6 +58,14 @@ function AppRoutes() {
       <Route path="/question-bank"     element={<PrivateRoute><QuestionBankPage /></PrivateRoute>} />
       <Route path="/submit"            element={<PrivateRoute><EditTracker /></PrivateRoute>} />
       <Route path="/member/:userId"    element={<PrivateRoute><MemberDetailPage /></PrivateRoute>} />
+
+      {/* ── Feature Routes ─────────────────────────────────────── */}
+      {/* Collaboration heatmap + inactive member management */}
+      <Route path="/heatmap"           element={<PrivateRoute><HeatmapPage /></PrivateRoute>} />
+      {/* Pomodoro focus timer — sessions saved to backend */}
+      <Route path="/focus"             element={<PrivateRoute><FocusPage /></PrivateRoute>} />
+      {/* Focus session history with weekly bar chart */}
+      <Route path="/history"           element={<PrivateRoute><HistoryPage /></PrivateRoute>} />
 
       {/* Teacher Routes */}
       <Route path="/teacher"       element={<PrivateRoute teacherOnly><AdminDashboard /></PrivateRoute>} />
