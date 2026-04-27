@@ -27,6 +27,9 @@ Flask-Mail==0.9.1
 # Certificate Generation
 reportlab==4.1.0
 
+# AI
+anthropic==0.25.0
+
 # Environment & Config
 python-dotenv==1.0.1
 
