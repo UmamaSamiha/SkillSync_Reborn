@@ -72,6 +72,10 @@ function AppRoutes() {
       <Route path="/history" element={
         <PrivateRoute><HistoryPage /></PrivateRoute>
       }/>
+       <Route path="/heatmap" element={
+        <PrivateRoute><HeatmapPage /></PrivateRoute>
+      }/>
+
       <Route path="/member/:userId" element={
         <PrivateRoute><MemberDetailPage /></PrivateRoute>
       }/>
@@ -107,6 +111,7 @@ function AppRoutes() {
       }/>
 
       {/* Shared (student + teacher + admin) */}
+      {/* Shared routes */}
       <Route path="/assignments" element={
         <PrivateRoute><AssignmentsPage /></PrivateRoute>
       }/>
@@ -125,6 +130,7 @@ function AppRoutes() {
       <Route path="/contributions" element={
         <PrivateRoute><ContributionsPage /></PrivateRoute>
       }/>
+  
 
       {/* Admin routes */}
       <Route path="/admin" element={

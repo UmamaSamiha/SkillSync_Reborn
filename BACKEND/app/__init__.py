@@ -6,7 +6,7 @@ blueprints, and error handlers registered.
 """
 
 import os
-from flask import Flask, jsonify   # FIXED
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
@@ -64,6 +64,8 @@ def create_app(config_name: str = None) -> Flask:
     from app.api.curriculum.routes    import curriculum_bp
     from app.api.question_bank.routes import qbank_bp
     from app.api.edit_tracking.routes import edit_tracking_bp
+    # ── NEW: AI detection blueprint ───────────────────────────────
+    from app.api.ai.routes             import ai_bp
 
     app.register_blueprint(auth_bp,         url_prefix="/api/auth")
     app.register_blueprint(users_bp,        url_prefix="/api/users")
@@ -80,6 +82,8 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(curriculum_bp,    url_prefix="/api/curriculum")
     app.register_blueprint(qbank_bp,         url_prefix="/api/question-bank")
     app.register_blueprint(edit_tracking_bp, url_prefix="/api/edit-tracking")
+    # ── NEW ───────────────────────────────────────────────────────
+    app.register_blueprint(ai_bp,           url_prefix="/api/ai")
 
     # ── JWT Callbacks ─────────────────────────────────────────────
     @jwt.expired_token_loader
@@ -103,46 +107,31 @@ def create_app(config_name: str = None) -> Flask:
             "code": "TOKEN_MISSING"
         }), 401
 
-    # ── Error Handlers (FIXED CLEAN OUTPUT) ───────────────────────
+    # ── Error Handlers ─────────────────────────────────────────────
     @app.errorhandler(400)
     def bad_request(e):
-        return jsonify({
-            "error": "Bad request"
-        }), 400
+        return jsonify({"error": "Bad request"}), 400
 
     @app.errorhandler(403)
     def forbidden(e):
-        return jsonify({
-            "error": "Forbidden",
-            "message": "Insufficient permissions"
-        }), 403
+        return jsonify({"error": "Forbidden", "message": "Insufficient permissions"}), 403
 
     @app.errorhandler(404)
     def not_found(e):
-        return jsonify({
-            "error": "Not found"
-        }), 404
+        return jsonify({"error": "Not found"}), 404
 
     @app.errorhandler(422)
     def unprocessable(e):
-        return jsonify({
-            "error": "Unprocessable entity"
-        }), 422
+        return jsonify({"error": "Unprocessable entity"}), 422
 
     @app.errorhandler(500)
     def server_error(e):
-        return jsonify({
-            "error": "Internal server error"
-        }), 500
+        return jsonify({"error": "Internal server error"}), 500
 
     # ── Health Check ──────────────────────────────────────────────
     @app.route("/api/health")
     def health():
-        return jsonify({
-            "status": "ok",
-            "app": "SkillSync",
-            "version": "1.0.0"
-        })
+        return jsonify({"status": "ok", "app": "SkillSync", "version": "1.0.0"})
 
     @app.shell_context_processor
     def make_shell_context():

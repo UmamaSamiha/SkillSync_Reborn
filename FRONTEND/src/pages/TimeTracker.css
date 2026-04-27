@@ -97,3 +97,95 @@
   background: var(--color-primary-dark);
   transform: translateY(-1px);
 }
+
+/* ── Due Soon panel ─────────────── */
+.due-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+.due-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--color-border);
+  gap: 8px;
+}
+.due-item:last-child { border-bottom: none; }
+
+.due-title {
+  font-size: 0.82rem;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.due-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-alt, #f3f4f6);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+.overdue-tag { background: var(--color-danger-light, #fee2e2); color: var(--color-danger); }
+.urgent-tag  { background: var(--color-warning-light, #fef3c7); color: var(--color-warning, #b45309); }
+
+/* ── To-Do panel ─────────────────── */
+.todo-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.95rem;
+  color: var(--color-accent);
+}
+
+.todo-input-row { display: flex; gap: 8px; }
+.todo-input-row .input { flex: 1; }
+
+.todo-list { display: flex; flex-direction: column; gap: 4px; }
+
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.todo-item:last-child { border-bottom: none; }
+.todo-item.done .todo-text { text-decoration: line-through; color: var(--color-text-muted); }
+
+.todo-check {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.todo-item.done .todo-check { color: var(--color-success); }
+
+.todo-text { flex: 1; font-size: 0.83rem; }
+
+.todo-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.todo-item:hover .todo-del { opacity: 1; }
+
+.mt-20 { margin-top: 20px; }

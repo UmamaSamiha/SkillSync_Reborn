@@ -2,14 +2,41 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
 
+
 // ── Helpers ────────────────────────────────────────────────────────
 function getInitials(name = "") {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
 
-function safeData(res, fallback = []) {
-  return res?.data?.data ?? fallback;
-}
+
+/**
+ * Universal Data Extractor
+ * Safely extracts an array from any API response format.
+ */
+const safeData = (response, fallback = []) => {
+  // If the response is completely empty/undefined
+  if (!response) return fallback;
+
+  // Axios automatically wraps responses in a 'data' object. Let's unwrap it.
+  const payload = response.data ? response.data : response;
+
+  // Scenario 1: Backend sent a raw array -> [ {...}, {...} ]
+  if (Array.isArray(payload)) return payload;
+
+  // Scenario 2: Backend used the Universal Envelope -> { success: true, data: [ {...} ] }
+  if (payload && Array.isArray(payload.data)) return payload.data;
+
+  // Scenario 3: Backend used a custom key -> { submissions: [ {...} ] }
+  const commonKeys = ['submissions', 'items', 'results'];
+  for (let key of commonKeys) {
+    if (payload && Array.isArray(payload[key])) {
+      return payload[key];
+    }
+  }
+
+  // If we can't find an array anywhere, return the safe fallback to prevent crashes
+  return fallback;
+};
 
 // ── Static maps ───────────────────────────────────────────────────
 const RISK_META = {
@@ -28,6 +55,19 @@ const CLASS_META = {
 
 const TREND_ICON = { rising: "↑", falling: "↓", stable: "→" };
 const TREND_COLOR = { rising: "#16A34A", falling: "#DC2626", stable: "#6B7280" };
+
+// ── helpers──────────────────────────────────────────────────
+
+function engColor(score) {
+  if (score >= 75) return "#16A34A";
+  if (score >= 45) return "#C17B3A";
+  return "#DC2626";
+}
+function engLabel(score) {
+  if (score >= 75) return "High";
+  if (score >= 45) return "Medium";
+  return "Low";
+}
 
 // ── Tiny bar chart for grade trend ────────────────────────────────
 function TrendBar({ data = [] }) {
@@ -49,6 +89,20 @@ function TrendBar({ data = [] }) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+function EngBar({ value = 0, color = "#893941", label = "" }) {
+  return (
+    <div style={{ flex: 1, minWidth: 80 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+        <span style={{ fontSize: 10, color: "#9CA3AF", fontWeight: 600, textTransform: "uppercase" }}>{label}</span>
+        <span style={{ fontSize: 11, fontWeight: 700, color }}>{value}</span>
+      </div>
+      <div style={{ height: 6, background: "#F3F4F6", borderRadius: 99 }}>
+        <div style={{ height: "100%", width: `${Math.min(value, 100)}%`, background: color, borderRadius: 99, transition: "width 0.4s" }} />
+      </div>
     </div>
   );
 }
@@ -133,8 +187,26 @@ export default function AdminDashboard() {
   const [expandedFeedback, setExpandedFeedback] = useState(null);
   const [alertSending, setAlertSending]         = useState(false);
   const [alertMsg, setAlertMsg]                 = useState("");
+  const [scanningId, setScanningId] = useState(null);
+  const [submissions, setSubmissions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [engagementData, setEngagementData] = useState([]);
+  const [engMsg, setEngMsg]                 = useState("");
+  const [calcingAll, setCalcingAll]         = useState(false);
+  const [calcingOne, setCalcingOne]         = useState(null);
 
   // ── Loaders ─────────────────────────────────────────────────────
+  const loadSubmissions = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Using your custom api utility! Change the URL if your Flask route is different.
+      const res = await api.get("/admin/submissions");
+      setSubmissions(safeData(res, []));
+    } catch { 
+      setSubmissions([]); 
+    }
+    setLoading(false);
+  }, []);
 
   const loadOverview = useCallback(async () => {
     setLoading(true);
@@ -195,6 +267,57 @@ export default function AdminDashboard() {
     setLoading(false);
   }, []);
 
+
+  const loadEngagement = useCallback(async () => {
+    setLoading(true);
+    setEngMsg("");
+    try {
+      const res = await api.get("/analytics/engagement-all");
+      setEngagementData(safeData(res, []));
+    } catch {
+      setEngagementData([]);
+      setEngMsg("❌ Could not load engagement data.");
+    }
+    setLoading(false);
+  }, []);
+
+  const calcAllEngagement = async () => {
+    setCalcingAll(true);
+    setEngMsg("");
+    try {
+      const res  = await api.post("/analytics/engagement/calculate-all");
+      const data = safeData(res, null);
+      setEngMsg(`✅ Recalculated for ${data?.success_count ?? 0} students.`);
+      await loadEngagement();
+    } catch (e) {
+      setEngMsg("❌ Failed: " + (e?.response?.data?.error || e.message));
+    }
+    setCalcingAll(false);
+  };
+
+  const calcOneEngagement = async (userId) => {
+    setCalcingOne(userId);
+    try {
+      await api.post(`/analytics/engagement/calculate/${userId}`);
+      await loadEngagement();
+    } catch (e) {
+      setEngMsg("❌ Failed: " + (e?.response?.data?.error || e.message));
+    }
+    setCalcingOne(null);
+  };
+
+  useEffect(() => {
+    if (tab === "overview") {
+      loadOverview();
+    } else if (tab === "submissions") {
+      loadSubmissions();
+    } else if (tab === "risk-alerts") { // Adjust these string names to match your actual tab names
+      loadRisk();
+    } else if (tab === "classification") {
+      loadClassification();
+    }
+  }, [tab, loadOverview, loadSubmissions, loadRisk, loadClassification]);
+
   useEffect(() => { loadOverview(); }, [loadOverview]);
 
   // ── Tab switch loader ────────────────────────────────────────────
@@ -202,6 +325,8 @@ export default function AdminDashboard() {
     setTab(t);
     if (t === "risk") loadRisk();
     if (t === "classification" || t === "performance") loadClassification();
+    if (t === "submissions") loadSubmissions();
+    if (t === "engagement") loadEngagement();
   };
 
   // ── Recalculate risk for one student ────────────────────────────
@@ -344,6 +469,37 @@ export default function AdminDashboard() {
     width: 260,
   };
 
+  const handleScan = async (submissionId) => {
+    setScanningId(submissionId);
+    try {
+      const res = await api.post(`/admin/submissions/${submissionId}/analyze`);
+      const data = res.data;
+
+      if (data.success) {
+        setSubmissions((prev) =>
+          prev.map((sub) =>
+            sub.id === submissionId
+              ? {
+                  ...sub,
+                  ai_score:         data.data.ai_score,
+                  similarity_score: data.data.similarity_score,
+                  flagged:          data.data.flagged,
+                  scan_reason:      data.data.reason,
+                  scan_confidence:  data.data.confidence,
+                }
+              : sub
+          )
+        );
+      } else {
+        alert("Failed to complete AI scan.");
+      }
+    } catch (error) {
+      console.error("Error during AI scan:", error);
+      alert("An error occurred while scanning.");
+    } finally {
+      setScanningId(null);
+    }
+  };
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
@@ -367,9 +523,11 @@ export default function AdminDashboard() {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 24 }}>
         {[
           ["overview",       "📊 Overview"],
+          ["submissions",    "📝 Submissions"],
           ["risk",           "⚠️ Risk Detection"],
           ["classification", "🎯 Classification"],
           ["performance",    "📈 Performance"],
+          ["engagement",     "💡 Engagement"],
           ["certificates",   "🏆 Certificates"],
           ["verify",         "🔐 Verify"],
         ].map(([k, l]) => (
@@ -399,6 +557,83 @@ export default function AdminDashboard() {
             </div>
           ) : (
             <p style={{ color: "#9CA3AF" }}>Could not load overview. Check backend connection.</p>
+          )}
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════
+          TAB: SUBMISSIONS (AI SCANNER)
+      ════════════════════════════════════════ */}
+      {tab === "submissions" && !loading && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ margin: 0, color: "#893941" }}>📝 Student Submissions</h3>
+            <button style={btn("ghost")} onClick={loadSubmissions}>↺ Refresh</button>
+          </div>
+
+          {submissions.length === 0 ? (
+            <div style={{ ...card, textAlign: "center", color: "#9CA3AF", padding: 40 }}>
+              No submissions found.
+            </div>
+          ) : (
+            <div style={card}>
+              <table style={{ width: "100%", textAlign: "left", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "2px solid #F5F0EB" }}>
+                    <th style={{ padding: "12px 8px", color: "#7A7063", fontSize: "0.85rem" }}>STUDENT</th>
+                    <th style={{ padding: "12px 8px", color: "#7A7063", fontSize: "0.85rem" }}>ASSIGNMENT</th>
+                    <th style={{ padding: "12px 8px", color: "#7A7063", fontSize: "0.85rem" }}>AI SCORE</th>
+                    <th style={{ padding: "12px 8px", color: "#7A7063", fontSize: "0.85rem" }}>ACTION</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {submissions.map((sub) => (
+                    <tr key={sub.id} style={{ borderBottom: "1px solid #F5F0EB" }}>
+                      <td style={{ padding: "12px 8px", fontWeight: 600 }}>{sub.student_name || "Unknown"}</td>
+                      <td style={{ padding: "12px 8px" }}>{sub.assignment_title || sub.title || "Untitled"}</td>
+                      <td style={{ padding: "12px 8px" }}>
+                        {sub.ai_score !== undefined && sub.ai_score !== null ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <Badge
+                              text={`🤖 AI: ${sub.ai_score}%`}
+                              bg={sub.ai_score > 60 ? "#FEE2E2" : "#DCFCE7"}
+                              color={sub.ai_score > 60 ? "#991B1B" : "#166534"}
+                            />
+                            {sub.similarity_score > 0 && (
+                              <Badge
+                                text={`🔁 Similar: ${sub.similarity_score}%`}
+                                bg={sub.similarity_score > 50 ? "#FEF3C7" : "#F3F4F6"}
+                                color={sub.similarity_score > 50 ? "#92400E" : "#6B7280"}
+                              />
+                            )}
+                            {sub.scan_reason && (
+                              <span style={{ fontSize: 10, color: "#9CA3AF", fontStyle: "italic" }}>
+                                {sub.scan_reason}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: "0.85rem", color: "#9CA3AF" }}>Not Scanned</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "12px 8px" }}>
+                        <button
+                          onClick={() => handleScan(sub.id)}
+                          disabled={scanningId === sub.id}
+                          style={{
+                            ...btn(scanningId === sub.id ? "ghost" : "primary"),
+                            padding: "6px 14px",
+                            opacity: scanningId === sub.id ? 0.6 : 1
+                          }}
+                        >
+                          {scanningId === sub.id ? "Scanning..." : "Analyze"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}
@@ -688,6 +923,96 @@ export default function AdminDashboard() {
           )}
         </div>
       )}
+      {/* ════════════════════════════════════════
+          TAB: ENGAGEMENT
+      ════════════════════════════════════════ */}
+      {tab === "engagement" && !loading && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <h3 style={{ margin: 0, color: "#893941" }}>💡 Engagement Scores</h3>
+              <p style={{ margin: "4px 0 0", fontSize: "0.82rem", color: "#9CA3AF" }}>
+                Current week · Forum 25% · Submissions 35% · Resources 20% · Quiz 20%
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={btn("primary")} onClick={calcAllEngagement} disabled={calcingAll}>
+                {calcingAll ? "Calculating..." : "🔄 Recalculate All"}
+              </button>
+              <button style={btn("ghost")} onClick={loadEngagement}>↺ Refresh</button>
+            </div>
+          </div>
+
+          {engMsg && (
+            <div style={{
+              padding: "10px 16px", borderRadius: 10, marginBottom: 14,
+              fontSize: "0.85rem", fontWeight: 600,
+              background: engMsg.startsWith("✅") ? "#DCFCE7" : "#FEE2E2",
+              color:      engMsg.startsWith("✅") ? "#166534" : "#991B1B",
+            }}>
+              {engMsg}
+            </div>
+          )}
+
+          {engagementData.length === 0 ? (
+            <div style={{ ...card, textAlign: "center", color: "#9CA3AF", padding: 40 }}>
+              No engagement data yet.{" "}
+              <button style={{ ...btn("ghost"), marginLeft: 8 }} onClick={calcAllEngagement}>
+                Calculate Now
+              </button>
+            </div>
+          ) : (
+            engagementData.map((item, i) => {
+              const s      = item?.score ?? {};
+              const total  = s.total_score ?? 0;
+              const color  = engColor(total);
+              const isCalc = calcingOne === item?.user?.id;
+              return (
+                <div key={item?.user?.id || i} style={{ ...card, borderLeft: `4px solid ${color}` }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                      <Avatar name={item?.user?.full_name} />
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{item?.user?.full_name}</div>
+                        <div style={{ fontSize: 12, color: "#9CA3AF" }}>{item?.user?.email}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <div style={{
+                        background: color + "22", border: `1.5px solid ${color}`,
+                        borderRadius: 999, padding: "4px 14px",
+                        display: "flex", alignItems: "center", gap: 6,
+                      }}>
+                        <span style={{ fontSize: 18, fontWeight: 800, color }}>{total}</span>
+                        <span style={{ fontSize: 11, color, fontWeight: 600 }}>{engLabel(total)}</span>
+                      </div>
+                      <button
+                        style={{ ...btn("ghost"), padding: "4px 12px", fontSize: "0.75rem", opacity: isCalc ? 0.6 : 1 }}
+                        onClick={() => calcOneEngagement(item?.user?.id)}
+                        disabled={isCalc}
+                      >
+                        {isCalc ? "⏳" : "🔄"}
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    <EngBar value={s.forum_score      ?? 0} color="#7A5C8A" label="Forum"       />
+                    <EngBar value={s.submission_score ?? 0} color="#893941" label="Submissions" />
+                    <EngBar value={s.resource_score   ?? 0} color="#C17B3A" label="Resources"   />
+                    <EngBar value={s.quiz_score        ?? 0} color="#5E6623" label="Quiz"        />
+                  </div>
+                  {s.week_start && (
+                    <div style={{ marginTop: 10, fontSize: 11, color: "#9CA3AF" }}>
+                      Week of {s.week_start}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+
 
       {/* ════════════════════════════════════════
           TAB: CERTIFICATES

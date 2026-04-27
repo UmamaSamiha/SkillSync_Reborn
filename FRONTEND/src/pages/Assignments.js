@@ -283,10 +283,16 @@ export default function AssignmentsPage() {
 
   const handleGrade = async (submissionId, assignmentId) => {
     const d = gradeData[submissionId];
-    if (!d?.score) { toast.error('Enter a score'); return; }
+    if (d?.score === undefined || d?.score === '') { toast.error('Enter a score'); return; }
+    const score = parseFloat(d.score);
+    if (isNaN(score) || score < 0) { toast.error('Score must be a valid number ≥ 0'); return; }
+    const assignment = assignments.find(a => a.id === assignmentId);
+    if (assignment && score > assignment.max_score) {
+      toast.error(`Score cannot exceed ${assignment.max_score}`); return;
+    }
     try {
       await api.put(`/assignments/submissions/${submissionId}/grade`, {
-        score:    parseFloat(d.score),
+        score,
         feedback: d.feedback || '',
       });
       toast.success('Graded — student notified.');
@@ -299,13 +305,17 @@ export default function AssignmentsPage() {
 
   const handleMemberGrade = async (submissionId, assignmentId, groupMembers) => {
     const memberData = memberGradeData[submissionId] || {};
+    const assignment = assignments.find(a => a.id === assignmentId);
     const memberGrades = groupMembers.map(m => ({
       student_id: m.user_id,
       score:      parseFloat(memberData[m.user_id]?.score ?? ''),
       feedback:   memberData[m.user_id]?.feedback || '',
     }));
-    if (memberGrades.some(mg => isNaN(mg.score))) {
-      toast.error('Enter a score for every member'); return;
+    if (memberGrades.some(mg => isNaN(mg.score) || mg.score < 0)) {
+      toast.error('Enter valid scores (≥ 0) for every member'); return;
+    }
+    if (assignment && memberGrades.some(mg => mg.score > assignment.max_score)) {
+      toast.error(`All scores must be ≤ ${assignment.max_score}`); return;
     }
     try {
       await api.post(`/assignments/submissions/${submissionId}/member-grades`, { member_grades: memberGrades });
@@ -662,11 +672,20 @@ export default function AssignmentsPage() {
                                   </span>
                                   <input className="input" type="number"
                                     placeholder={`Score (max ${a.max_score})`} style={{ width: 120 }}
+                                    min="0" max={a.max_score}
                                     value={memberGradeData[s.id]?.[m.user_id]?.score || ''}
-                                    onChange={e => setMemberGradeData(prev => ({
-                                      ...prev,
-                                      [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], score: e.target.value } }
-                                    }))} />
+                                    onChange={e => {
+                                      const raw = e.target.value;
+                                      const num = parseFloat(raw);
+                                      if (!isNaN(num) && num > a.max_score) {
+                                        toast.error(`Score cannot exceed ${a.max_score}`);
+                                        return;
+                                      }
+                                      setMemberGradeData(prev => ({
+                                        ...prev,
+                                        [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], score: raw } }
+                                      }));
+                                    }} />
                                   <input className="input" placeholder="Feedback"
                                     value={memberGradeData[s.id]?.[m.user_id]?.feedback || ''}
                                     onChange={e => setMemberGradeData(prev => ({

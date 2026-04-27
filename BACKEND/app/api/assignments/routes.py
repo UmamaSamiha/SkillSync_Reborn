@@ -27,7 +27,7 @@ assignments_bp = Blueprint("assignments", __name__)
 
 # ── GET /api/assignments ──────────────────────────────────────────────────────
 
-def _serialize_assignment(a):
+def _serialize_assignment(a, user=None):
     d = a.to_dict()
     d['project_name']  = a.project.name if a.project else None
     d['pending_count'] = a.submissions.filter_by(status='submitted').count()
@@ -40,6 +40,48 @@ def _serialize_assignment(a):
         d['course_id']    = None
         d['course_title'] = None
         d['course_code']  = None
+
+    # Include student's submission status if user is a student
+    if user and user.role == Role.STUDENT:
+        student_submission = None
+        # Check if in a group for this assignment
+        membership = (
+            GroupMembership.query
+            .join(AssignmentGroup)
+            .filter(
+                AssignmentGroup.assignment_id == a.id,
+                GroupMembership.student_id == user.id,
+            ).first()
+        )
+        if membership:
+            student_submission = Submission.query.filter_by(group_id=membership.group_id).first()
+        else:
+            student_submission = Submission.query.filter_by(
+                assignment_id=a.id,
+                student_id=user.id
+            ).first()
+
+        if student_submission:
+            # For group assignments, check if there's an individual grade record
+            score = student_submission.score
+            if student_submission.group_id and student_submission.status == 'graded':
+                grade_record = GradeRecord.query.filter_by(
+                    submission_id=student_submission.id,
+                    user_id=user.id
+                ).first()
+                if grade_record:
+                    score = grade_record.score
+
+            d['student_submission'] = {
+                'id': student_submission.id,
+                'status': student_submission.status,
+                'score': score,
+                'feedback': student_submission.feedback,
+                'submitted_at': student_submission.submitted_at.isoformat() if student_submission.submitted_at else None,
+            }
+        else:
+            d['student_submission'] = None
+
     return d
 
 
@@ -86,7 +128,7 @@ def list_assignments():
 
     result = paginate(
         query.order_by(Assignment.due_date.asc()),
-        _serialize_assignment
+        lambda a: _serialize_assignment(a, user)
     )
     return success(result)
 
@@ -282,6 +324,7 @@ def list_submissions(assignment_id):
         **s.to_dict(),
         "student":      s.student.to_dict() if user.role != "student" else None,
         "group_members": _get_group_members(s.group_id) if s.group_id else None,
+        "score": _get_student_score(s, user) if user.role == "student" else s.score,
     })
     return success(result)
 
@@ -520,6 +563,19 @@ def _get_group_members(group_id):
         {"user_id": m.student_id, "full_name": m.student.full_name}
         for m in GroupMembership.query.filter_by(group_id=group_id).all()
     ]
+
+
+def _get_student_score(submission, user):
+    """Get student's score, checking GradeRecord for group assignments."""
+    # For group submissions, check if there's an individual grade record
+    if submission.group_id and submission.status == 'graded':
+        grade_record = GradeRecord.query.filter_by(
+            submission_id=submission.id,
+            user_id=user.id
+        ).first()
+        if grade_record:
+            return grade_record.score
+    return submission.score
 
 
 def _check_prerequisite(user_id, prerequisite_topic_id, project_id):

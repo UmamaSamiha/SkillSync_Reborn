@@ -5,16 +5,18 @@ Admin-only: risk detection, AI/similarity flags,
 student classification, engagement overview.
 """
 
-from flask import Blueprint, request
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 
-from app.models import User, Submission, RiskProfile, GradeRecord, RiskLevel, FocusSession, Notification, Project, ProjectMember
+from app.models import User, Submission, SubmissionScan, RiskProfile, GradeRecord, RiskLevel, FocusSession, Notification, Project, ProjectMember
 from app.utils.helpers import success, error, admin_required, get_current_user
 from app.services.risk_engine import recalculate_risk
+from app.services.ai_detection import analyze_submission as run_ai_analysis, compute_similarity
 from app import db
 from sqlalchemy import func
 import os
 import requests
+import traceback
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -474,3 +476,102 @@ def _build_email(student, profile) -> tuple:
 </html>"""
 
     return subject, html
+
+# ── GET /api/admin/submissions ────────────────────────────────────────────────
+# Added: admin can list all submissions, including latest AI scan scores
+
+@admin_bp.route("/submissions", methods=["GET"])
+@jwt_required()
+@admin_required
+def get_all_submissions():
+    """Return every submission with student name, assignment title, and latest scan score."""
+    try:
+        submissions = Submission.query.all()
+        data = []
+        for sub in submissions:
+            sub_dict = sub.to_dict()
+            sub_dict["student_name"]     = sub.student.full_name if sub.student else "Unknown Student"
+            sub_dict["assignment_title"] = sub.assignment.title  if sub.assignment else "Unknown Assignment"
+            # Pull from SubmissionScan table if Submission.ai_score is still null
+            if sub_dict.get("ai_score") is None:
+                scan = (
+                    SubmissionScan.query
+                    .filter_by(submission_id=sub.id)
+                    .order_by(SubmissionScan.scanned_at.desc())
+                    .first()
+                )
+                sub_dict["ai_score"]         = float(scan.ai_score)         if scan and scan.ai_score         else None
+                sub_dict["similarity_score"] = float(scan.similarity_score) if scan and scan.similarity_score else None
+            data.append(sub_dict)
+        return jsonify({"success": True, "count": len(data), "data": data}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ── POST /api/admin/submissions/<id>/analyze ──────────────────────────────────
+# Added: trigger Claude+heuristic AI detection + similarity check, store results
+
+@admin_bp.route("/submissions/<submission_id>/analyze", methods=["POST"])
+@jwt_required()
+@admin_required
+def analyze_submission_route(submission_id):
+    """
+    Runs Claude-blended AI detection + plagiarism similarity on the given submission.
+    Persists scores to both Submission columns and a new SubmissionScan row.
+    """
+    try:
+        submission = Submission.query.get(submission_id)
+        if not submission or not submission.content:
+            return jsonify({"success": False, "error": "Submission not found or has no content"}), 404
+
+        # Claude + heuristic blended score
+        result = run_ai_analysis(submission.content)
+
+        # Plagiarism: compare against all other submissions for the same assignment
+        other_submissions = Submission.query.filter(
+            Submission.assignment_id == submission.assignment_id,
+            Submission.id            != submission.id,
+            Submission.content.isnot(None)
+        ).all()
+
+        max_similarity = 0.0
+        for other_sub in other_submissions:
+            sim = compute_similarity(submission.content, other_sub.content)
+            if sim > max_similarity:
+                max_similarity = sim
+
+        similarity_score_percent = round(max_similarity * 100, 2)
+
+        # Persist both scores on the Submission row
+        submission.ai_score         = result["ai_score"]
+        submission.similarity_score = similarity_score_percent
+        if result["ai_score"] > 60 or similarity_score_percent > 50.0:
+            submission.flagged = True
+
+        # Also store a SubmissionScan record for history
+        scan = SubmissionScan(
+            submission_id    = submission_id,
+            ai_score         = result["ai_score"],
+            similarity_score = similarity_score_percent,
+            status           = "completed",
+        )
+        db.session.add(scan)
+        db.session.commit()
+
+        return jsonify({
+            "success": True,
+            "message": "Analysis complete",
+            "data": {
+                "ai_score":         result["ai_score"],
+                "heuristic_score":  result["heuristic_score"],
+                "claude_score":     result["claude_score"],
+                "similarity_score": similarity_score_percent,
+                "flagged":          submission.flagged,
+                "confidence":       result.get("confidence", "medium"),
+                "reason":           result.get("reason", ""),
+            },
+        }), 200
+    except Exception as e:
+        traceback.print_exc() 
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
