@@ -58,9 +58,11 @@ def _gen_grades(pattern, start, end, count):
 
 
 def seed_all():
-    """Drop all tables and re-seed with fresh sample data."""
+    """Seed sample data — skips if data already exists."""
+    if User.query.first():
+        print("Database already seeded, skipping.")
+        return
     print("Seeding SkillSync database...")
-    db.drop_all()
     db.create_all()
 
     # ── Users ─────────────────────────────────────────────────────────────
