@@ -59,7 +59,7 @@ def _gen_grades(pattern, start, end, count):
 
 def seed_all():
     """Seed sample data — skips if data already exists."""
-    if User.query.first():
+    if User.query.filter_by(email="admin@skillsync.edu").first():
         print("Database already seeded, skipping.")
         return
     print("Seeding SkillSync database...")
