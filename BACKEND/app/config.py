@@ -75,9 +75,10 @@ class ProductionConfig(BaseConfig):
     DEBUG   = False
     TESTING = False
 
-    # Force PostgreSQL in production
+    # Force PostgreSQL in production (Render provides postgres:// but SQLAlchemy requires postgresql://)
     uri = os.getenv("DATABASE_URL", "")
     SQLALCHEMY_DATABASE_URI = uri.replace("postgres://", "postgresql://", 1) if uri else None
+    SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"sslmode": "require"}}
 
 
 class TestingConfig(BaseConfig):
