@@ -9,7 +9,7 @@ Now augmented with Claude API for deeper semantic analysis.
 import re
 import os
 import json
-import anthropic
+import google.generativeai as genai
 from typing import Optional
 
 
@@ -71,15 +71,11 @@ def compute_similarity(text1: str, text2: str) -> float:
     return round(intersection / union, 3)
 
 
-# ── NEW: Claude-powered deep analysis ─────────────────────────────────────────
+# ── Gemini-powered deep analysis ──────────────────────────────────────────────
 def _claude_score(text: str) -> dict:
-    """
-    Calls Claude API and returns ai_score (0-100), confidence, and reason.
-    Internal use only — call analyze_submission() from your routes.
-    """
     prompt = f"""You are an AI content detection expert reviewing a student submission.
 
-Estimate the likelihood (0–100) that this was written by an AI like ChatGPT or Claude.
+Estimate the likelihood (0–100) that this was written by an AI like ChatGPT or Gemini.
 
 Key signals to check:
 - Unnaturally uniform sentence length and structure
@@ -100,16 +96,12 @@ Submission:
 {text[:1500]}
 \"\"\""""
 
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-    print("Calling Claude...")
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=200,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    print("Claude responded.")
-
-    raw = message.content[0].text.strip()
+    genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    raw = model.generate_content(prompt).text.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"```[a-z]*\n?", "", raw).strip("` \n")
     result = json.loads(raw)
     result["ai_score"] = max(0, min(100, int(result.get("ai_score", 0))))
     return result
@@ -172,13 +164,12 @@ def analyze_submission(text: str, use_claude: bool = True) -> dict:
             "flagged":         blended >= 60,
         }
 
-    except (json.JSONDecodeError, anthropic.APIError, KeyError) as e:
-        # Graceful fallback — don't crash the route if Claude fails
+    except (json.JSONDecodeError, KeyError, Exception) as e:
         return {
             "ai_score":        heuristic_score,
             "heuristic_score": heuristic_score,
             "claude_score":    None,
             "confidence":      "low",
-            "reason":          f"Claude unavailable, heuristic only. ({str(e)})",
+            "reason":          f"AI unavailable, heuristic only. ({str(e)})",
             "flagged":         heuristic_score >= 60,
         }
