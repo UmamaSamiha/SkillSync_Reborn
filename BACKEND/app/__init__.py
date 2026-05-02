@@ -39,9 +39,14 @@ def create_app(config_name: str = None) -> Flask:
     bcrypt.init_app(app)
     mail.init_app(app)
 
+    raw_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000")
+    origins = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    # Allow all Vercel preview deployments for this project
+    origins.append(r"https://skill-sync-reborn.*\.vercel\.app")
+
     CORS(app, resources={
         r"/api/*": {
-            "origins": os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(","),
+            "origins": origins,
             "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"],
             "supports_credentials": True,
