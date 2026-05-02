@@ -182,7 +182,7 @@ def member_insight():
 
     try:
         msg = _anthropic().messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-6",
             max_tokens=300,
             messages=[{"role": "user", "content": prompt}],
         )
@@ -234,7 +234,7 @@ def session_summary():
 
     try:
         msg = _anthropic().messages.create(
-            model="claude-opus-4-6",
+            model="claude-sonnet-4-6",
             max_tokens=250,
             messages=[{"role": "user", "content": prompt}],
         )

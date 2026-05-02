@@ -373,7 +373,7 @@ export default function AdminDashboard() {
     }
     try {
       const res = await api.get(`/admin/personalized-feedback/${userId}`);
-      const data = safeData(res, null);
+      const data = res.data?.data || null;
       setFeedback(prev => ({ ...prev, [userId]: data }));
       setExpandedFeedback(userId);
     } catch (e) {
@@ -390,7 +390,7 @@ export default function AdminDashboard() {
         user_id: studentId,
         title:   "Certificate of Achievement — SkillSync LMS",
       });
-      const cert = safeData(res, null);
+      const cert = res.data?.data || null;
       if (!cert) throw new Error("No cert returned");
       setCertificates(prev => {
         const filtered = prev.filter(c => c.user_id !== studentId);

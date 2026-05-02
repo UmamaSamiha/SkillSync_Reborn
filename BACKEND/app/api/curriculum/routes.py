@@ -142,6 +142,35 @@ def submit_quiz(topic_id):
         return success(prog.to_dict(), f"Score recorded: {score}. You need {topic.mastery_threshold - score} more points.")
 
 
+@curriculum_bp.route("/topics/<int:topic_id>", methods=["PUT"])
+@jwt_required()
+def update_topic(topic_id):
+    user = get_current_user()
+    if not user or str(user.role) not in ("admin", "teacher"):
+        return error("Admin or Teacher access required", 403)
+    topic = AnushkaTopic.query.get(topic_id)
+    if not topic:
+        return error("Topic not found", 404)
+    data = request.get_json(silent=True) or {}
+    if "title" in data:
+        topic.title = data["title"].strip()
+    if "description" in data:
+        topic.description = data["description"].strip() or None
+    if "track" in data:
+        topic.track = data["track"].strip()
+    if "order" in data:
+        topic.order = int(data["order"])
+    if "mastery_threshold" in data:
+        topic.mastery_threshold = int(data["mastery_threshold"])
+    if "prerequisite_ids" in data:
+        AnushkaTopicPrerequisite.query.filter_by(topic_id=topic_id).delete()
+        for prereq_id in data["prerequisite_ids"]:
+            if AnushkaTopic.query.get(prereq_id):
+                db.session.add(AnushkaTopicPrerequisite(topic_id=topic_id, prerequisite_id=prereq_id))
+    db.session.commit()
+    return success(topic.to_dict(), "Topic updated")
+
+
 @curriculum_bp.route("/topics/<int:topic_id>", methods=["DELETE"])
 @jwt_required()
 def delete_topic(topic_id):
