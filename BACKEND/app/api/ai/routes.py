@@ -13,7 +13,7 @@ from collections import defaultdict
 
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
-from anthropic import Anthropic
+import google.generativeai as genai
 
 from app import db
 from app.models import (
@@ -24,14 +24,9 @@ from app.utils.helpers import success, error, get_current_user
 
 ai_bp = Blueprint("ai", __name__)
 
-_client = None
-
-
-def _anthropic():
-    global _client
-    if _client is None:
-        _client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    return _client
+def _gemini():
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+    return genai.GenerativeModel("gemini-1.5-flash")
 
 
 # ── colour / text maps for activity feed ─────────────────────────────────────
@@ -181,12 +176,7 @@ def member_insight():
     )
 
     try:
-        msg = _anthropic().messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=300,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        insight = msg.content[0].text
+        insight = _gemini().generate_content(prompt).text
     except Exception as exc:
         return error(f"AI service error: {exc}", 502)
 
@@ -233,12 +223,7 @@ def session_summary():
     )
 
     try:
-        msg = _anthropic().messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=250,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        summary = msg.content[0].text
+        summary = _gemini().generate_content(prompt).text
     except Exception as exc:
         return error(f"AI service error: {exc}", 502)
 
