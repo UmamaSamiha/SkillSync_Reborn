@@ -83,7 +83,14 @@ class ProductionConfig(BaseConfig):
     # Force PostgreSQL in production (Render provides postgres:// but SQLAlchemy requires postgresql://)
     uri = os.getenv("DATABASE_URL", "")
     SQLALCHEMY_DATABASE_URI = uri.replace("postgres://", "postgresql://", 1) if uri else None
-    SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"sslmode": "require"}}
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "connect_args": {"sslmode": "require"},
+        # Render's managed Postgres silently drops idle connections; without
+        # these, a pooled connection that's gone stale surfaces as a raw
+        # "SSL connection has been closed unexpectedly" error on next use.
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+    }
 
 
 class TestingConfig(BaseConfig):
