@@ -1,29 +1,35 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, Timer, History, BarChart2,
-  Award, ShieldAlert, LogOut,
+  LayoutDashboard, BarChart2,
+  Award, LogOut,
   FileText, Bell, GraduationCap, BookOpen, Clock, PieChart,
-  Map, User, HelpCircle, Edit, ClipboardList, Settings
+  Map, User, HelpCircle, ClipboardList, Settings, TrendingUp,
+  AlertTriangle, Target, Lightbulb, ClipboardCheck, ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
 
 const teacherNav = [
-  { to: '/teacher',        icon: GraduationCap, label: 'Dashboard'     },
-  { to: '/courses',        icon: BookOpen,      label: 'Courses'       },
-  { to: '/assignments',    icon: FileText,      label: 'Assignments'   },
-  { to: '/contributions',  icon: PieChart,      label: 'Contributions' },
-  { to: '/analytics',      icon: BarChart2,     label: 'Analytics'     },
-  { to: '/notifications',  icon: Bell,          label: 'Notifications' },
-  { to: '/teacher/edits',  icon: ClipboardList, label: 'Edit Tracking' },
-  { to: '/teacher/topics', icon: Settings,      label: 'Topic Manager' },
-  { to: '/question-bank',  icon: HelpCircle,    label: 'Question Bank' },
+  { to: '/teacher',             icon: GraduationCap, label: 'Dashboard'     },
+  { to: '/courses',             icon: BookOpen,      label: 'Courses'       },
+  { to: '/assignments',         icon: FileText,      label: 'Assignments'   },
+  { to: '/teacher/performance', icon: TrendingUp,    label: 'Performance'   },
+  { to: '/contributions',       icon: PieChart,      label: 'Contributions' },
+  { to: '/notifications',       icon: Bell,          label: 'Notifications' },
+  { to: '/teacher/edits',       icon: ClipboardList, label: 'Edit Tracking' },
+  { to: '/teacher/topics',      icon: Settings,      label: 'Topic Manager' },
+  { to: '/question-bank',       icon: HelpCircle,    label: 'Question Bank' },
 ];
 
 const adminNav = [
-  { to: '/admin',         icon: ShieldAlert,   label: 'Admin Panel'   },
-  { to: '/admin/edits',   icon: ClipboardList, label: 'Edit Tracking' },
-  { to: '/admin/topics',  icon: Settings,      label: 'Topic Manager' },
+  { to: '/admin',                  icon: LayoutDashboard, label: 'Overview'          },
+  { to: '/admin/risk',             icon: AlertTriangle,   label: 'Risk Detection'    },
+  { to: '/admin/classification',   icon: Target,          label: 'Classification'    },
+  { to: '/admin/engagement',       icon: Lightbulb,       label: 'Engagement'        },
+  { to: '/admin/certificates',     icon: Award,           label: 'Certificates'      },
+  { to: '/admin/course-approvals', icon: ClipboardCheck,  label: 'Course Approvals'  },
+  { to: '/admin/teacher-approvals',icon: GraduationCap,   label: 'Teacher Approval'  },
+  { to: '/admin/verify',           icon: ShieldCheck,     label: 'Verify Certificate'},
 ];
 
 function getInitials(name = '') {
@@ -36,8 +42,7 @@ export default function Sidebar() {
 
   const studentNav = [
     { to: '/dashboard',             icon: LayoutDashboard, label: 'Dashboard'     },
-    { to: '/focus',                 icon: Timer,           label: 'Focus Mode'    },
-    { to: '/history',               icon: History,         label: 'History'       },
+    { to: `/portfolio/${user?.id}`, icon: User,            label: 'Portfolio'     },
     { to: '/courses',               icon: BookOpen,        label: 'Courses'       },
     { to: '/assignments',           icon: FileText,        label: 'Assignments'   },
     { to: '/timetracker',           icon: Clock,           label: 'Time Tracker'  },
@@ -45,9 +50,7 @@ export default function Sidebar() {
     { to: '/analytics',             icon: BarChart2,       label: 'Analytics'     },
     { to: '/certificates',          icon: Award,           label: 'Certificates'  },
     { to: '/curriculum',            icon: Map,             label: 'Curriculum'    },
-    { to: `/portfolio/${user?.id}`, icon: User,            label: 'Portfolio'     },
     { to: '/question-bank',         icon: HelpCircle,      label: 'Question Bank' },
-    { to: '/submit',                icon: Edit,            label: 'Submit Work'   },
   ];
 
   const navItems = isAdmin ? adminNav : isTeacher ? teacherNav : studentNav;
@@ -69,6 +72,7 @@ export default function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            end
             className={({ isActive }) =>
               `sidebar-link ${isActive ? 'active' : ''}`
             }

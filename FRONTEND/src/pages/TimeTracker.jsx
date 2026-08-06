@@ -204,7 +204,7 @@ export default function TimeTrackerPage() {
   return (
     <div className="timetracker-page">
       <h1 style={{ fontFamily: 'var(--font-display)', marginBottom: 4 }}>Study Hub</h1>
-      <p className="text-muted text-sm mb-24">Log your focus sessions, track deadlines, and stay on top of your work.</p>
+      <p className="text-muted text-sm mb-24">Log your study time, track deadlines, and stay on top of your work.</p>
 
       <div className="tracker-grid">
         {/* ── Timer Panel ─────────────────────────── */}

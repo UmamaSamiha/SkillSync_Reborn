@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
+import { AlertTriangle, Users, Zap, CalendarDays } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
 import "./Heatmap.css";
@@ -10,22 +11,12 @@ function getInitials(name) {
   return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
 }
 
-const HEAT_COLORS = {
-  0: "#EAEAD8",
-  1: "#D4D994",
-  2: "#A8AF4A",
-  3: "#5E6623",
-  4: "#3D4316",
-};
-
-const CONTRIB_COLORS = ["#893941","#CB7885","#D4D994","#5E6623","#7A5C8A"];
-
-function getHeatColor(count) {
-  if (count === 0) return HEAT_COLORS[0];
-  if (count <= 2)  return HEAT_COLORS[1];
-  if (count <= 5)  return HEAT_COLORS[2];
-  if (count <= 10) return HEAT_COLORS[3];
-  return HEAT_COLORS[4];
+function heatLevel(count) {
+  if (count === 0) return 0;
+  if (count <= 2)  return 1;
+  if (count <= 5)  return 2;
+  if (count <= 10) return 3;
+  return 4;
 }
 
 function formatDateCol(isoDate) {
@@ -37,6 +28,7 @@ export default function HeatmapPage() {
   const { user }    = useAuth();
   const navigate    = useNavigate();
   const location    = useLocation();
+  const isTeamView  = user?.role === "teacher" || user?.role === "admin";
 
   const [data,       setData]       = useState(null);
   const [projectId,  setProjectId]  = useState(null);
@@ -151,7 +143,7 @@ export default function HeatmapPage() {
     return () => window.removeEventListener("heatmap:member-flagged", onFlagged);
   }, []);
 
-  /* ── Notify All inactive members ───────────────── */
+  /* ── Notify All inactive members (teacher/admin only) ──────── */
   const handleNotifyAll = async () => {
     const inactiveList = data?.inactive_members || [];
     const allMembers   = data?.members || [];
@@ -195,27 +187,20 @@ export default function HeatmapPage() {
     }
   };
 
-  /* ── Navigate to member detail ─────────────────── */
+  /* ── Navigate to member detail (teacher/admin only) ────────── */
   const handleMemberClick = (memberId) => {
+    if (!isTeamView) return;
     const qs = projectId ? `?projectId=${projectId}` : "";
     navigate(`/member/${memberId}${qs}`);
   };
 
   /* ── Render ─────────────────────────────────────── */
   if (loading) {
-    return (
-      <div style={{ padding: 40, color: "var(--color-text-muted)", fontSize: "0.9rem" }}>
-        Loading heatmap…
-      </div>
-    );
+    return <div className="text-muted" style={{ padding: 40, fontSize: "0.9rem" }}>Loading heatmap…</div>;
   }
 
   if (error) {
-    return (
-      <div style={{ padding: 40, color: "var(--color-danger)", fontSize: "0.9rem" }}>
-        {error}
-      </div>
-    );
+    return <div style={{ padding: 40, fontSize: "0.9rem", color: "var(--color-danger)" }}>{error}</div>;
   }
 
   if (!data) return null;
@@ -224,100 +209,56 @@ export default function HeatmapPage() {
 
   return (
     <div>
-      <h2 style={{ marginBottom: 4, fontFamily: "'Playfair Display',serif" }}>
-        Team Collaboration Heatmap
-      </h2>
-      <p style={{ color: "#7A7063", fontSize: "0.88rem", marginBottom: 20 }}>
-        Visual activity breakdown for your project group
+      <h2 className="heatmap-title">{isTeamView ? "Team Collaboration Heatmap" : "My Activity Heatmap"}</h2>
+      <p className="heatmap-subtitle">
+        {isTeamView
+          ? "Visual activity breakdown for your project group"
+          : "Your activity over the last 7 days"}
       </p>
 
-      {/* ── Inactive alert banner ─────────────────── */}
-      {inactive_members.length > 0 && (
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          background: "#FEF3C7", border: "1px solid #F9C74F",
-          borderRadius: 10, padding: "10px 16px", marginBottom: 20, flexWrap: "wrap", gap: 8,
-        }}>
-          <span style={{ fontSize: "0.85rem", color: "#78350F", fontWeight: 500 }}>
-            ⚠ {inactive_members.length} member{inactive_members.length > 1 ? "s have" : " has"} been inactive for 5+ days
+      {/* ── Inactive alert banner (teacher/admin only) ────────── */}
+      {isTeamView && inactive_members.length > 0 && (
+        <div className="heatmap-alert">
+          <span className="alert-left">
+            <AlertTriangle size={15} />
+            {inactive_members.length} member{inactive_members.length > 1 ? "s have" : " has"} been inactive for 5+ days
           </span>
-          <button
-            onClick={handleNotifyAll}
-            disabled={notifying}
-            style={{
-              background: notifying ? "#aaa" : "#893941",
-              color: "#fff", border: "none",
-              borderRadius: 999, padding: "6px 14px",
-              fontSize: "0.8rem", cursor: notifying ? "not-allowed" : "pointer",
-              transition: "background 150ms",
-            }}
-          >
+          <button className="btn btn-primary btn-sm" onClick={handleNotifyAll} disabled={notifying}>
             {notifying ? "Sending…" : "Notify All"}
           </button>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 20, alignItems: "start" }}>
+      <div className="heatmap-main" style={!isTeamView ? { gridTemplateColumns: "1fr" } : undefined}>
 
         {/* ── Activity Grid ─────────────────────────── */}
-        <div style={{ background: "#FDFAF7", border: "1px solid rgba(45,45,45,0.1)", borderRadius: 16, padding: 24 }}>
-          <p style={{ fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#7A7063", marginBottom: 16 }}>
-            Activity Grid
-          </p>
+        <div className="card">
+          <p className="section-label">Activity Grid</p>
 
-          <div style={{ overflowX: "auto" }}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: `100px repeat(${date_cols.length}, minmax(36px, 1fr))`,
-              gap: 6,
-              minWidth: date_cols.length * 40 + 100,
-            }}>
-              {/* Header row */}
-              <div />
+          <div className="heatmap-grid-wrap">
+            <div className="activity-grid" style={{ gridTemplateColumns: `100px repeat(${date_cols.length}, minmax(36px, 1fr))` }}>
+              <div className="grid-name-col" />
               {date_cols.map((d, i) => (
-                <div key={i} style={{
-                  textAlign: "center", fontSize: "0.68rem",
-                  fontWeight: 600, color: "#7A7063",
-                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                }}>
-                  {formatDateCol(d)}
-                </div>
+                <div key={i} className="grid-day-header">{formatDateCol(d)}</div>
               ))}
 
-              {/* Member rows */}
               {members.map(m => (
-                <div key={m.user.id} style={{ display: "contents" }}>
+                <div key={m.user.id} className="grid-row">
                   <div
-                    style={{
-                      fontSize: "0.82rem", fontWeight: 500,
-                      display: "flex", alignItems: "center", gap: 6,
-                      cursor: "pointer", color: "var(--color-text)",
-                      whiteSpace: "nowrap",
-                    }}
+                    className="grid-name"
+                    style={{ cursor: isTeamView ? "pointer" : "default", gap: 6 }}
                     onClick={() => handleMemberClick(m.user.id)}
-                    title={`View ${m.user.full_name}'s profile`}
+                    title={isTeamView ? `View ${m.user.full_name}'s profile` : m.user.full_name}
                   >
-                    <span style={{
-                      width: 22, height: 22, borderRadius: "50%",
-                      background: "#893941", color: "#fff",
-                      display: "inline-flex", alignItems: "center", justifyContent: "center",
-                      fontSize: "0.6rem", fontWeight: 700, flexShrink: 0,
-                    }}>
-                      {getInitials(m.user.full_name)}
-                    </span>
-                    {m.user.full_name.split(" ")[0]}
+                    <span className="avatar avatar-sm">{getInitials(m.user.full_name)}</span>
+                    {isTeamView ? m.user.full_name.split(" ")[0] : "You"}
                   </div>
 
                   {date_cols.map((d, i) => (
                     <div
                       key={i}
-                      style={{
-                        aspectRatio: "1", borderRadius: 6,
-                        background: getHeatColor(m.activity[d] || 0),
-                        cursor: "pointer",
-                        transition: "transform 100ms",
-                      }}
-                      title={`${m.user.full_name} · ${d}: ${m.activity[d] || 0} actions`}
+                      className={`grid-cell level-${heatLevel(m.activity[d] || 0)}`}
+                      title={`${d}: ${m.activity[d] || 0} actions`}
                     />
                   ))}
                 </div>
@@ -325,83 +266,67 @@ export default function HeatmapPage() {
             </div>
           </div>
 
-          {/* Legend */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.75rem", color: "#7A7063" }}>Legend:</span>
-            {[["#EAEAD8","None"],["#D4D994","Low"],["#A8AF4A","Med"],["#5E6623","High"]].map(([c,l]) => (
-              <div key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                <div style={{ width: 14, height: 14, borderRadius: 3, background: c }} />
-                <span style={{ fontSize: "0.75rem", color: "#7A7063" }}>{l}</span>
+          <div className="grid-legend">
+            <span className="text-xs text-muted">Legend:</span>
+            {["None", "Low", "Med", "High"].map((label, i) => (
+              <div key={label} className="legend-item">
+                <div className={`legend-cell level-${i}`} />
+                <span className="text-xs text-muted">{label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── Contribution Share ────────────────────── */}
-        <div style={{ background: "#FDFAF7", border: "1px solid rgba(45,45,45,0.1)", borderRadius: 16, padding: 24 }}>
-          <p style={{ fontSize: "0.78rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", color: "#7A7063", marginBottom: 16 }}>
-            Contribution Share
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            {contribution_share.map((m, i) => (
-              <div
-                key={m.user.id}
-                style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}
-                onClick={() => handleMemberClick(m.user.id)}
-                title={`View ${m.user.full_name}'s profile`}
-              >
-                <div style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: CONTRIB_COLORS[i % CONTRIB_COLORS.length],
-                  color: "#fff", display: "flex", alignItems: "center",
-                  justifyContent: "center", fontSize: "0.75rem",
-                  fontWeight: 600, flexShrink: 0,
-                }}>
-                  {getInitials(m.user.full_name)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{m.user.full_name}</span>
-                    <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "#893941" }}>{m.percentage}%</span>
+        {/* ── Contribution Share (teacher/admin only) ─────────── */}
+        {isTeamView && (
+          <div className="card contribution-share">
+            <p className="section-label">Contribution Share</p>
+            <div className="contrib-list">
+              {contribution_share.map((m, i) => (
+                <div
+                  key={m.user.id}
+                  className="contrib-row"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleMemberClick(m.user.id)}
+                  title={`View ${m.user.full_name}'s profile`}
+                >
+                  <div className={`avatar avatar-sm contrib-avatar color-${i % 5}`}>
+                    {getInitials(m.user.full_name)}
                   </div>
-                  <div style={{ height: 6, background: "rgba(45,45,45,0.1)", borderRadius: 999, marginTop: 5, overflow: "hidden" }}>
-                    <div style={{
-                      height: "100%", borderRadius: 999,
-                      background: `linear-gradient(90deg,${CONTRIB_COLORS[i % CONTRIB_COLORS.length]},rgba(255,255,255,0.3))`,
-                      width: `${m.percentage}%`,
-                      transition: "width 600ms ease",
-                    }} />
+                  <div className="contrib-info">
+                    <div className="flex-between">
+                      <span className="contrib-name">{m.user.full_name}</span>
+                      <span className="contrib-pct">{m.percentage}%</span>
+                    </div>
+                    <div className="progress-bar mt-4">
+                      <div className="progress-fill" style={{ width: `${m.percentage}%` }} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ── Stats row ─────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 20 }}>
+      <div className="grid-3 mt-16">
         {[
-          { icon: "👥", value: `${stats.active_members ?? "—"}/${stats.total_members ?? "—"}`, label: "Active Members" },
-          { icon: "⚡", value: stats.total_actions ?? "—",   label: "Total Actions"   },
-          { icon: "📅", value: stats.most_active_day ?? "—", label: "Most Active Day" },
+          {
+            icon:  Users,
+            value: isTeamView
+              ? `${stats.active_members ?? "—"}/${stats.total_members ?? "—"}`
+              : ((stats.total_actions ?? 0) > 0 ? "Active" : "No activity yet"),
+            label: isTeamView ? "Active Members" : "Your Status",
+          },
+          { icon: Zap,          value: stats.total_actions ?? "—",   label: "Total Actions"   },
+          { icon: CalendarDays, value: stats.most_active_day ?? "—", label: "Most Active Day" },
         ].map((s, i) => (
-          <div key={i} style={{
-            background: "#FDFAF7", border: "1px solid rgba(45,45,45,0.1)",
-            borderRadius: 16, padding: "20px 24px",
-            display: "flex", alignItems: "center", gap: 16,
-          }}>
-            <div style={{
-              width: 44, height: 44, borderRadius: 10,
-              background: "rgba(137,57,65,0.12)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: "1.2rem",
-            }}>
-              {s.icon}
-            </div>
+          <div key={i} className="stat-card">
+            <div className="stat-icon"><s.icon size={20} /></div>
             <div>
-              <div style={{ fontSize: "1.6rem", fontWeight: 700, lineHeight: 1 }}>{s.value}</div>
-              <div style={{ fontSize: "0.8rem", color: "#7A7063", marginTop: 2 }}>{s.label}</div>
+              <div className="stat-value">{s.value}</div>
+              <div className="stat-label">{s.label}</div>
             </div>
           </div>
         ))}

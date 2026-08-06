@@ -44,20 +44,6 @@ export default function LoginPage() {
           <p className="login-sub">
             A collaborative academic platform for teams that care about progress.
           </p>
-          <div className="login-preview-cards">
-            <div className="preview-card">
-              <div className="preview-dot green" />
-              <span>Anushka submitted Assignment 3</span>
-            </div>
-            <div className="preview-card">
-              <div className="preview-dot amber" />
-              <span>Focus session — 25 min — Algorithms</span>
-            </div>
-            <div className="preview-card">
-              <div className="preview-dot red" />
-              <span>System Design due in 2 days</span>
-            </div>
-          </div>
         </div>
       </div>
 

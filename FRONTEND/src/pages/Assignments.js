@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  FileText, Clock, ChevronDown, ChevronUp,
-  Send, Plus, X, Star, AlertCircle, Users, UserPlus, BookOpen
+  FileText, Clock, ChevronRight, ChevronDown, ChevronUp,
+  Send, Plus, X, AlertCircle, Users, BookOpen
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
+import DocEditor from '../components/common/DocEditor';
 import './Assignments.css';
 
 /* ── Small helpers ──────────────────────────────────────── */
@@ -16,116 +18,13 @@ function StatusBadge({ sub }) {
   return <span className="badge badge-warning">Draft</span>;
 }
 
-/* ── Group manager (teacher assigns students to a group) ── */
-function GroupManager({ assignmentId, onClose }) {
-  const [students,  setStudents]  = useState([]);
-  const [selected,  setSelected]  = useState([]);
-  const [groups,    setGroups]    = useState([]);
-  const [loading,   setLoading]   = useState(true);
-
-  useEffect(() => {
-    Promise.all([
-      api.get('/courses/mine/students'),
-      api.get(`/assignments/${assignmentId}/groups`),
-    ]).then(([usersRes, groupsRes]) => {
-      setStudents(usersRes.data?.data ?? []);
-      setGroups(groupsRes.data?.data ?? []);
-    }).catch(() => toast.error('Failed to load students'))
-      .finally(() => setLoading(false));
-  }, [assignmentId]);
-
-  const toggleStudent = id =>
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-
-  const assignedIds = new Set(groups.flatMap(g => g.members.map(m => m.user_id)));
-
-  const handleCreate = async () => {
-    if (selected.length < 2) { toast.error('Select at least 2 students'); return; }
-    try {
-      await api.post(`/assignments/${assignmentId}/groups`, { student_ids: selected });
-      toast.success('Group created — students notified!');
-      const res = await api.get(`/assignments/${assignmentId}/groups`);
-      setGroups(res.data?.data ?? []);
-      setSelected([]);
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to create group');
-    }
-  };
-
-  return (
-    <div className="group-manager card">
-      <div className="flex-between mb-16">
-        <h4 style={{ fontSize: '0.95rem' }}>Assign Student Groups</h4>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}><X size={14} /></button>
-      </div>
-
-      {loading && <p className="text-sm text-muted">Loading students...</p>}
-
-      {!loading && (
-        <>
-          {groups.length > 0 && (
-            <div className="existing-groups mb-16">
-              <p className="text-xs text-muted mb-8">Existing groups</p>
-              {groups.map((g, i) => (
-                <div key={g.id} className="group-chip">
-                  <Users size={12} />
-                  Group {i + 1}: {g.members.map(m => m.full_name).join(', ')}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <p className="text-xs text-muted mb-8">Select students for a new group:</p>
-          <div className="student-picker">
-            {students
-              .filter(s => !assignedIds.has(s.id))
-              .map(s => (
-                <label key={s.id} className="student-pick-item">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(s.id)}
-                    onChange={() => toggleStudent(s.id)}
-                  />
-                  {s.full_name}
-                </label>
-              ))}
-            {students.filter(s => !assignedIds.has(s.id)).length === 0 && (
-              <p className="text-sm text-muted">All students have been assigned.</p>
-            )}
-          </div>
-
-          <button className="btn btn-primary btn-sm mt-16" onClick={handleCreate}
-            disabled={selected.length < 2}>
-            <UserPlus size={14} /> Create Group ({selected.length} selected)
-          </button>
-        </>
-      )}
-    </div>
-  );
-}
-
-/* ── Contribution bar (for teacher view) ────────────────── */
-function ContribRow({ member, total, color }) {
-  const pct = total > 0 ? Math.round(member.chars_written / total * 100) : 0;
-  return (
-    <div className="contrib-inline-row">
-      <span className="contrib-inline-name">{member.full_name}</span>
-      <div className="progress-bar" style={{ flex: 1 }}>
-        <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-      <span className="text-xs text-muted" style={{ minWidth: 36, textAlign: 'right' }}>{pct}%</span>
-    </div>
-  );
-}
-
-const COLORS = ['#893941', '#5E6623', '#4A6B8A', '#C17B3A', '#7B5EA7'];
-
 /* ══════════════════════════════════════════════════════════
    Main Page
 ═══════════════════════════════════════════════════════════ */
 export default function AssignmentsPage() {
   const { isTeacher, isAdmin } = useAuth();
   const canManage = isTeacher || isAdmin;
+  const navigate = useNavigate();
 
   const [assignments,    setAssignments]    = useState([]);
   const [courses,        setCourses]        = useState([]);
@@ -135,11 +34,7 @@ export default function AssignmentsPage() {
   const [submissions,    setSubmissions]    = useState({});
   const [content,        setContent]        = useState('');
   const [submitting,     setSubmitting]     = useState(false);
-  const [gradeData,       setGradeData]       = useState({});
-  const [memberGradeData, setMemberGradeData] = useState({});
   const [showCreate,     setShowCreate]     = useState(false);
-  const [groupMgr,       setGroupMgr]       = useState(null);
-  const [contribs,       setContribs]       = useState({});
   const [allStudents,    setAllStudents]     = useState([]);
   const [pickedStudents, setPickedStudents] = useState([]);
   const [courseProjects, setCourseProjects] = useState([]);
@@ -203,25 +98,22 @@ export default function AssignmentsPage() {
     } catch {}
   };
 
-  const toggleExpand = async (id) => {
-    if (expanded === id) { setExpanded(null); return; }
-    setExpanded(id);
+  /* Students expand in place to submit; teachers navigate to a dedicated page. */
+  const handleCardClick = async (a) => {
+    if (canManage) {
+      navigate(`/assignments/${a.id}`);
+      return;
+    }
+
+    if (expanded === a.id) { setExpanded(null); return; }
+    setExpanded(a.id);
     setContent('');
 
     try {
-      const res   = await api.get(`/assignments/${id}/submissions`);
+      const res   = await api.get(`/assignments/${a.id}/submissions`);
       const items = res.data.data.items || [];
-
-      if (canManage) {
-        setSubmissions(prev => ({ ...prev, [id]: items }));
-        const a = assignments.find(x => x.id === id);
-        if (a?.is_group && !contribs[id]) {
-          api.get(`/timelogs/assignment/${id}/contributions`)
-            .then(r => setContribs(prev => ({ ...prev, [id]: r.data?.data })))
-            .catch(() => {});
-        }
-      } else if (items.length > 0) {
-        setSubmissions(prev => ({ ...prev, [id]: items[0] }));
+      if (items.length > 0) {
+        setSubmissions(prev => ({ ...prev, [a.id]: items[0] }));
         setContent(items[0].content || '');
       }
     } catch {}
@@ -278,52 +170,6 @@ export default function AssignmentsPage() {
       await fetchAssignments();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to create');
-    }
-  };
-
-  const handleGrade = async (submissionId, assignmentId) => {
-    const d = gradeData[submissionId];
-    if (d?.score === undefined || d?.score === '') { toast.error('Enter a score'); return; }
-    const score = parseFloat(d.score);
-    if (isNaN(score) || score < 0) { toast.error('Score must be a valid number ≥ 0'); return; }
-    const assignment = assignments.find(a => a.id === assignmentId);
-    if (assignment && score > assignment.max_score) {
-      toast.error(`Score cannot exceed ${assignment.max_score}`); return;
-    }
-    try {
-      await api.put(`/assignments/submissions/${submissionId}/grade`, {
-        score,
-        feedback: d.feedback || '',
-      });
-      toast.success('Graded — student notified.');
-      setExpanded(null);
-      setTimeout(() => toggleExpand(assignmentId), 100);
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Grading failed');
-    }
-  };
-
-  const handleMemberGrade = async (submissionId, assignmentId, groupMembers) => {
-    const memberData = memberGradeData[submissionId] || {};
-    const assignment = assignments.find(a => a.id === assignmentId);
-    const memberGrades = groupMembers.map(m => ({
-      student_id: m.user_id,
-      score:      parseFloat(memberData[m.user_id]?.score ?? ''),
-      feedback:   memberData[m.user_id]?.feedback || '',
-    }));
-    if (memberGrades.some(mg => isNaN(mg.score) || mg.score < 0)) {
-      toast.error('Enter valid scores (≥ 0) for every member'); return;
-    }
-    if (assignment && memberGrades.some(mg => mg.score > assignment.max_score)) {
-      toast.error(`All scores must be ≤ ${assignment.max_score}`); return;
-    }
-    try {
-      await api.post(`/assignments/submissions/${submissionId}/member-grades`, { member_grades: memberGrades });
-      toast.success('Individual grades saved — each member notified.');
-      setExpanded(null);
-      setTimeout(() => toggleExpand(assignmentId), 100);
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Grading failed');
     }
   };
 
@@ -492,15 +338,13 @@ export default function AssignmentsPage() {
       {/* ── Assignment List ───────────────────────────── */}
       <div className="assignments-list">
         {visibleAssignments.map(a => {
-          const isExp     = expanded === a.id;
+          const isExp     = !canManage && expanded === a.id;
           const sub       = !canManage ? submissions[a.id] : null;
-          const allSubs   = canManage  ? (submissions[a.id] || []) : [];
           const isOverdue = a.due_date && new Date(a.due_date) < new Date();
-          const contrib   = contribs[a.id];
 
           return (
             <div key={a.id} className={`assignment-card card ${isExp ? 'expanded' : ''}`}>
-              <div className="assignment-header" onClick={() => toggleExpand(a.id)}>
+              <div className="assignment-header" onClick={() => handleCardClick(a)}>
                 <div className="flex-center gap-12">
                   <FileText size={18} className="text-primary" />
                   <div>
@@ -529,208 +373,68 @@ export default function AssignmentsPage() {
                           {a.difficulty}
                         </span>
                       )}
+                      {canManage && (a.pending_count ?? 0) > 0 && (
+                        <span className="badge badge-warning" style={{ fontSize: '0.65rem' }}>
+                          {a.pending_count} to grade
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <div className="flex-center gap-12">
                   {!canManage && <StatusBadge sub={sub} />}
-                  {isExp ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  {canManage ? <ChevronRight size={16} className="text-muted" /> : (isExp ? <ChevronUp size={16} /> : <ChevronDown size={16} />)}
                 </div>
               </div>
 
+              {/* Student submission area (teachers navigate away instead of expanding) */}
               {isExp && (
                 <div className="assignment-body">
                   {a.description && <p className="text-sm text-muted mb-16">{a.description}</p>}
 
-                  {/* Teacher tools */}
-                  {canManage && a.is_group && (
-                    <div className="mb-16">
-                      <button className="btn btn-secondary btn-sm"
-                        onClick={e => { e.stopPropagation(); setGroupMgr(groupMgr === a.id ? null : a.id); }}>
-                        <Users size={14} /> Manage Groups
-                      </button>
+                  {sub?.group_members && (
+                    <div className="group-info-banner mb-16">
+                      <Users size={14} />
+                      <span className="text-sm">
+                        Group: {sub.group_members.map(m => m.full_name).join(', ')}
+                      </span>
                     </div>
                   )}
-
-                  {groupMgr === a.id && (
-                    <GroupManager assignmentId={a.id} onClose={() => setGroupMgr(null)} />
+                  {sub?.status === 'graded' && (
+                    <div className="grade-box">
+                      <p><strong>Score:</strong> {sub.score} / {a.max_score}</p>
+                      {sub.feedback && <p><strong>Feedback:</strong> {sub.feedback}</p>}
+                    </div>
                   )}
-
-                  {/* Student submission area */}
-                  {!canManage && (
-                    <>
-                      {sub?.group_members && (
-                        <div className="group-info-banner mb-16">
-                          <Users size={14} />
-                          <span className="text-sm">
-                            Group: {sub.group_members.map(m => m.full_name).join(', ')}
-                          </span>
-                        </div>
-                      )}
-                      {sub?.status === 'graded' && (
-                        <div className="grade-box">
-                          <p><strong>Score:</strong> {sub.score} / {a.max_score}</p>
-                          {sub.feedback && <p><strong>Feedback:</strong> {sub.feedback}</p>}
-                        </div>
-                      )}
-                      {sub?.status === 'submitted' && (
-                        <div className="grade-box" style={{ background: 'var(--color-info-light)' }}>
-                          <p className="text-sm">Your submission is awaiting review.</p>
-                        </div>
-                      )}
-                      {(!sub || sub?.status === 'draft') && (
-                        <div className="submission-form">
-                          {a.is_group && (
-                            <p className="text-xs text-muted mb-8">
-                              This is a shared group draft — all members see and edit the same content.
-                            </p>
-                          )}
-                          <label>Your Answer</label>
-                          <textarea className="input" rows={5} value={content}
-                            onChange={e => setContent(e.target.value)}
-                            placeholder="Type your answer here..." />
-                          <div className="flex-center gap-12 mt-16">
-                            <button className="btn btn-secondary btn-sm"
-                              onClick={() => handleSubmit(a.id, true)} disabled={submitting}>
-                              Save Draft
-                            </button>
-                            <button className="btn btn-primary btn-sm"
-                              onClick={() => handleSubmit(a.id, false)} disabled={submitting}>
-                              <Send size={14} /> {submitting ? 'Submitting...' : 'Submit'}
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </>
+                  {sub?.status === 'submitted' && (
+                    <div className="grade-box" style={{ background: 'var(--color-info-light)' }}>
+                      <p className="text-sm">Your submission is awaiting review.</p>
+                    </div>
                   )}
-
-                  {/* Teacher submissions list */}
-                  {canManage && (
-                    <div className="teacher-submissions">
-                      <h4 className="mb-16" style={{ fontSize: '0.95rem' }}>
-                        Submissions ({allSubs.length})
-                      </h4>
-                      {allSubs.length === 0 ? (
-                        <p className="text-muted text-sm">No submissions yet.</p>
-                      ) : allSubs.map(s => (
-                        <div key={s.id} className="submission-row">
-                          <div className="submission-row-header">
-                            <div>
-                              <p className="text-sm" style={{ fontWeight: 600 }}>
-                                {s.group_members
-                                  ? s.group_members.map(m => m.full_name).join(' & ')
-                                  : (s.student?.full_name || 'Student')}
-                              </p>
-                              <p className="text-xs text-muted">
-                                {s.submitted_at
-                                  ? `Submitted ${new Date(s.submitted_at).toLocaleString()}`
-                                  : 'Draft'}
-                                {s.is_late && (
-                                  <span className="badge badge-danger"
-                                        style={{ marginLeft: 8, fontSize: '0.65rem' }}>Late</span>
-                                )}
-                                {s.flagged && (
-                                  <span className="badge badge-warning"
-                                        style={{ marginLeft: 8, fontSize: '0.65rem' }}>Flagged</span>
-                                )}
-                              </p>
-                            </div>
-                            <StatusBadge sub={s} />
-                          </div>
-
-                          {s.content && (
-                            <div className="submission-content">
-                              <p className="text-sm">{s.content}</p>
-                            </div>
-                          )}
-
-                          {/* Contribution breakdown for group submissions */}
-                          {s.group_id && contrib && contrib.members?.length > 0 && (
-                            <div className="contrib-inline-block">
-                              <p className="text-xs text-muted mb-8">Writing contribution</p>
-                              {contrib.members.map((m, i) => (
-                                <ContribRow
-                                  key={m.user_id}
-                                  member={m}
-                                  total={contrib.members.reduce((acc, x) => acc + x.chars_written, 0)}
-                                  color={COLORS[i % COLORS.length]}
-                                />
-                              ))}
-                            </div>
-                          )}
-
-                          {s.status === 'submitted' && s.group_members?.length > 0 && (
-                            /* Individual grading for group submissions */
-                            <div className="grade-form">
-                              <p className="text-xs text-muted mb-8" style={{ fontWeight: 600 }}>
-                                Grade each member individually:
-                              </p>
-                              {s.group_members.map(m => (
-                                <div key={m.user_id} className="flex-center gap-12 mb-8">
-                                  <span className="text-sm" style={{ minWidth: 130, fontWeight: 500 }}>
-                                    {m.full_name}
-                                  </span>
-                                  <input className="input" type="number"
-                                    placeholder={`Score (max ${a.max_score})`} style={{ width: 120 }}
-                                    min="0" max={a.max_score}
-                                    value={memberGradeData[s.id]?.[m.user_id]?.score || ''}
-                                    onChange={e => {
-                                      const raw = e.target.value;
-                                      const num = parseFloat(raw);
-                                      if (!isNaN(num) && num > a.max_score) {
-                                        toast.error(`Score cannot exceed ${a.max_score}`);
-                                        return;
-                                      }
-                                      setMemberGradeData(prev => ({
-                                        ...prev,
-                                        [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], score: raw } }
-                                      }));
-                                    }} />
-                                  <input className="input" placeholder="Feedback"
-                                    value={memberGradeData[s.id]?.[m.user_id]?.feedback || ''}
-                                    onChange={e => setMemberGradeData(prev => ({
-                                      ...prev,
-                                      [s.id]: { ...prev[s.id], [m.user_id]: { ...prev[s.id]?.[m.user_id], feedback: e.target.value } }
-                                    }))} />
-                                </div>
-                              ))}
-                              <button className="btn btn-primary btn-sm mt-8"
-                                onClick={() => handleMemberGrade(s.id, a.id, s.group_members)}>
-                                <Star size={14} /> Save All Grades
-                              </button>
-                            </div>
-                          )}
-
-                          {s.status === 'submitted' && !s.group_members?.length && (
-                            /* Regular single grading for individual submissions */
-                            <div className="grade-form">
-                              <div className="flex-center gap-12">
-                                <input className="input" type="number"
-                                  placeholder={`Score (max ${a.max_score})`} style={{ width: 140 }}
-                                  value={gradeData[s.id]?.score || ''}
-                                  onChange={e => setGradeData(prev => ({ ...prev,
-                                    [s.id]: { ...prev[s.id], score: e.target.value } }))} />
-                                <input className="input" placeholder="Feedback (optional)"
-                                  value={gradeData[s.id]?.feedback || ''}
-                                  onChange={e => setGradeData(prev => ({ ...prev,
-                                    [s.id]: { ...prev[s.id], feedback: e.target.value } }))} />
-                                <button className="btn btn-primary btn-sm"
-                                  onClick={() => handleGrade(s.id, a.id)}>
-                                  <Star size={14} /> Grade
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          {s.status === 'graded' && (
-                            <div className="grade-box" style={{ marginTop: 8 }}>
-                              <p className="text-sm"><strong>Score:</strong> {s.score}/{a.max_score}</p>
-                              {s.feedback && (
-                                <p className="text-sm"><strong>Feedback:</strong> {s.feedback}</p>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                  {(!sub || sub?.status === 'draft') && (
+                    <div className="submission-form">
+                      {a.is_group && (
+                        <p className="text-xs text-muted mb-8">
+                          This is a shared group draft — all members see and edit the same content.
+                        </p>
+                      )}
+                      <label>Your Answer</label>
+                      <DocEditor
+                        key={a.id}
+                        content={content}
+                        onChange={setContent}
+                        placeholder="Type your answer here..."
+                      />
+                      <div className="flex-center gap-12 mt-16">
+                        <button className="btn btn-secondary btn-sm"
+                          onClick={() => handleSubmit(a.id, true)} disabled={submitting}>
+                          Save Draft
+                        </button>
+                        <button className="btn btn-primary btn-sm"
+                          onClick={() => handleSubmit(a.id, false)} disabled={submitting}>
+                          <Send size={14} /> {submitting ? 'Submitting...' : 'Submit'}
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

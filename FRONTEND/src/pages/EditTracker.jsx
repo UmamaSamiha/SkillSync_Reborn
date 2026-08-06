@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { CheckCircle2, BookOpen, AlertTriangle, Send } from 'lucide-react';
 import api from '../api';
 
 export default function EditTracker() {
@@ -99,7 +100,7 @@ export default function EditTracker() {
   if (submitted) {
     return (
       <div style={{ maxWidth: 600, margin: '60px auto', textAlign: 'center' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
+        <CheckCircle2 size={44} style={{ marginBottom: 16, color: 'var(--color-green)' }} />
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Submitted!</h2>
         <p style={{ color: 'var(--color-muted)', marginBottom: 24 }}>
           Your work has been submitted. Your teacher will review and score it.
@@ -125,8 +126,9 @@ export default function EditTracker() {
           border: '1px solid rgba(99,102,241,.3)',
           borderRadius: 10, padding: '10px 16px', marginBottom: 20,
           fontSize: 13, color: 'var(--color-primary)', fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          📚 Submitting for topic: {topicTitle}
+          <BookOpen size={15} /> Submitting for topic: {topicTitle}
         </div>
       )}
 
@@ -137,7 +139,7 @@ export default function EditTracker() {
           borderRadius: 10, padding: '12px 16px', marginBottom: 20,
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
-          <span style={{ fontSize: 20 }}>⚠️</span>
+          <AlertTriangle size={20} style={{ color: 'var(--color-red)', flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 700, color: 'var(--color-red)', fontSize: 14 }}>
               Large paste detected
@@ -213,9 +215,9 @@ export default function EditTracker() {
               className="btn btn-primary"
               onClick={handleSubmit}
               disabled={submitting || !title.trim() || !text.trim()}
-              style={{ fontSize: 13, padding: '8px 20px' }}
+              style={{ fontSize: 13, padding: '8px 20px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
             >
-              {submitting ? 'Submitting…' : '📤 Submit'}
+              {submitting ? 'Submitting…' : <><Send size={14} /> Submit</>}
             </button>
           </div>
         </div>

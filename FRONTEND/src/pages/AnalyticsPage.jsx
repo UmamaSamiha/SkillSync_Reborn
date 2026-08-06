@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { TrendingUp } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../utils/api";
 
@@ -161,7 +162,7 @@ export default function AnalyticsPage() {
 
   return (
     <div style={s.page}>
-      <h2 style={s.title}>📈 My Analytics</h2>
+      <h2 style={s.title}><TrendingUp size={20} style={{ verticalAlign: "-3px", marginRight: 8 }} /> My Analytics</h2>
       <p style={s.sub}>Your performance trends, grade prediction, and personalized feedback</p>
 
       {/* ── Performance Trend Graph ── */}

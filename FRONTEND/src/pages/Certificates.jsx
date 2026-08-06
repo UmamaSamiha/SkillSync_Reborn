@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Award, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
@@ -215,19 +216,19 @@ export default function Certificates() {
 
   return (
     <div style={s.page}>
-      <h2 style={s.title}>🏆 My Certificates</h2>
+      <h2 style={s.title}><Award size={20} style={{ verticalAlign: '-3px', marginRight: 8 }} /> My Certificates</h2>
       <p style={s.sub}>Generate and download your achievement certificates as PDF</p>
 
       <button style={s.genBtn} onClick={handleGenerate} disabled={generating}>
         {generating ? 'Generating...' : '+ Generate Certificate'}
       </button>
 
-      {message && <div style={s.msg(false)}>✅ {message}</div>}
-      {error   && <div style={s.msg(true)}>❌ {error}</div>}
+      {message && <div style={{ ...s.msg(false), display: 'flex', alignItems: 'center', gap: 8 }}><CheckCircle2 size={16} /> {message}</div>}
+      {error   && <div style={{ ...s.msg(true),  display: 'flex', alignItems: 'center', gap: 8 }}><XCircle size={16} /> {error}</div>}
 
       {certificates.length === 0 ? (
         <div style={s.empty}>
-          <div style={{ fontSize: 40, marginBottom: 10 }}>🏅</div>
+          <Award size={36} style={{ marginBottom: 10, opacity: 0.5 }} />
           <div>No certificates yet.</div>
           <div style={{ marginTop: 4, fontSize: '0.82rem' }}>Click "Generate Certificate" to create one.</div>
         </div>
@@ -235,7 +236,7 @@ export default function Certificates() {
         certificates.map((cert) => (
           <div key={cert.id} style={s.card}>
             <div style={s.cardLeft}>
-              <div style={{ fontSize: 32 }}>🏆</div>
+              <Award size={28} style={{ color: '#893941', flexShrink: 0 }} />
               <div>
                 <div style={s.certTitle}>{cert.title}</div>
                 <div style={s.certMeta}>

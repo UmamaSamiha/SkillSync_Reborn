@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Users, Star, ChevronDown, ChevronUp, FileText, Plus, X } from 'lucide-react';
+import { BookOpen, Users, Star, ChevronDown, ChevronUp, FileText, Plus, X, Trash2, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import './Courses.css';
+
+function StatusBadge({ status }) {
+  if (status === 'pending_approval') return <span className="badge badge-warning"><Clock size={10} /> Pending Approval</span>;
+  if (status === 'pending_deletion') return <span className="badge badge-danger"><Clock size={10} /> Pending Removal</span>;
+  return null;
+}
 
 const OPEN_LIBRARY = 'https://openlibrary.org/search.json';
 
@@ -28,7 +34,7 @@ function BookCard({ book }) {
   );
 }
 
-function CourseCard({ course, onToggleEnroll, canManage }) {
+function CourseCard({ course, onToggleEnroll, onRequestDelete, canManage, isOwner, isAdmin }) {
   const [books,    setBooks]    = useState([]);
   const [expanded, setExpanded] = useState(false);
   const [loading,  setLoading]  = useState(false);
@@ -69,6 +75,7 @@ function CourseCard({ course, onToggleEnroll, canManage }) {
           </div>
         </div>
         <div className="flex-center gap-12">
+          <StatusBadge status={course.status} />
           <span className={`badge ${CREDIT_COLORS[course.credits] ?? 'badge-neutral'}`}>
             {course.credits} credits
           </span>
@@ -104,9 +111,24 @@ function CourseCard({ course, onToggleEnroll, canManage }) {
           )}
 
           {canManage && (
-            <div className="flex-center gap-12 mb-16">
-              <span className="badge badge-success">Your Course</span>
+            <div className="flex-center gap-12 mb-16" style={{ flexWrap: 'wrap' }}>
+              {isOwner && <span className="badge badge-success">Your Course</span>}
               <span className="text-xs text-muted">{course.student_count} students enrolled</span>
+
+              {(isOwner || isAdmin) && course.status === 'active' && (
+                <button
+                  className="btn btn-ghost btn-sm"
+                  style={{ color: 'var(--color-danger)', marginLeft: 'auto' }}
+                  onClick={() => onRequestDelete(course)}
+                >
+                  <Trash2 size={13} /> {isAdmin && !isOwner ? 'Remove Course' : 'Request Removal'}
+                </button>
+              )}
+              {course.status === 'pending_deletion' && (
+                <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
+                  Removal requested — awaiting admin approval
+                </span>
+              )}
             </div>
           )}
 
@@ -134,12 +156,13 @@ function CourseCard({ course, onToggleEnroll, canManage }) {
 }
 
 export default function CoursesPage() {
-  const { isTeacher, isAdmin } = useAuth();
+  const { user, isTeacher, isAdmin } = useAuth();
   const canManage = isTeacher || isAdmin;
 
   const [courses,    setCourses]    = useState([]);
   const [loading,    setLoading]    = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [viewMode,   setViewMode]   = useState('my'); // 'my' | 'available' — students only
   const [form, setForm] = useState({
     code: '', title: '', description: '', credits: '3', topic_keyword: '',
   });
@@ -159,14 +182,14 @@ export default function CoursesPage() {
     if (!form.code || !form.title) { toast.error('Code and title are required'); return; }
     setCreating(true);
     try {
-      await api.post('/courses/', {
+      const res = await api.post('/courses/', {
         code:          form.code.toUpperCase().trim(),
         title:         form.title.trim(),
         description:   form.description.trim(),
         credits:       parseInt(form.credits) || 3,
         topic_keyword: form.topic_keyword.trim(),
       });
-      toast.success(`Course ${form.code.toUpperCase()} created!`);
+      toast.success(res.data?.message || `Course ${form.code.toUpperCase()} created!`);
       setForm({ code: '', title: '', description: '', credits: '3', topic_keyword: '' });
       setShowCreate(false);
       fetchCourses();
@@ -174,6 +197,20 @@ export default function CoursesPage() {
       toast.error(err.response?.data?.error || 'Failed to create course');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleRequestDelete = async (course) => {
+    const confirmMsg = isAdmin
+      ? `Remove ${course.code}? This takes it off the active catalog immediately.`
+      : `Request removal of ${course.code}? An admin will need to approve it.`;
+    if (!window.confirm(confirmMsg)) return;
+    try {
+      const res = await api.delete(`/courses/${course.id}`);
+      toast.success(res.data?.message || 'Done');
+      fetchCourses();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Action failed');
     }
   };
 
@@ -192,6 +229,14 @@ export default function CoursesPage() {
     }
   };
 
+  // Students: "My Courses" = enrolled only, "Available Courses" = everything.
+  // Teachers/admins are unaffected — they always see their full manageable list.
+  const visibleCourses = canManage
+    ? courses
+    : viewMode === 'my'
+    ? courses.filter(c => c.enrolled)
+    : courses;
+
   return (
     <div className="courses-page">
       <div className="flex-between mb-4">
@@ -205,8 +250,26 @@ export default function CoursesPage() {
       <p className="text-muted text-sm mb-24">
         {canManage
           ? 'Manage your courses. Each course gets a linked project for assignments.'
-          : 'Browse and enroll in available courses.'}
+          : 'Browse your enrolled courses, or find new ones to join.'}
       </p>
+
+      {/* My Courses / Available Courses — students only */}
+      {!canManage && (
+        <div className="flex-center gap-8 mb-24">
+          <button
+            className={`btn btn-sm ${viewMode === 'my' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setViewMode('my')}
+          >
+            My Courses
+          </button>
+          <button
+            className={`btn btn-sm ${viewMode === 'available' ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setViewMode('available')}
+          >
+            Available Courses
+          </button>
+        </div>
+      )}
 
       {/* Create Course Form — teachers only */}
       {showCreate && canManage && (
@@ -258,16 +321,30 @@ export default function CoursesPage() {
 
       {loading && <p className="text-muted">Loading courses...</p>}
 
-      {!loading && courses.length === 0 && (
+      {!loading && visibleCourses.length === 0 && (
         <div className="text-center text-muted" style={{ padding: '60px 0' }}>
           <BookOpen size={40} style={{ opacity: 0.3, marginBottom: 12 }} />
-          <p>{canManage ? 'No courses yet. Create your first one!' : 'No courses available yet.'}</p>
+          <p>
+            {canManage
+              ? 'No courses yet. Create your first one!'
+              : viewMode === 'my'
+              ? "You haven't enrolled in any courses yet — check Available Courses."
+              : 'No courses available yet.'}
+          </p>
         </div>
       )}
 
       <div className="courses-list">
-        {courses.map(c => (
-          <CourseCard key={c.id} course={c} onToggleEnroll={toggleEnroll} canManage={canManage} />
+        {visibleCourses.map(c => (
+          <CourseCard
+            key={c.id}
+            course={c}
+            onToggleEnroll={toggleEnroll}
+            onRequestDelete={handleRequestDelete}
+            canManage={canManage}
+            isOwner={c.instructor_id === user?.id}
+            isAdmin={isAdmin}
+          />
         ))}
       </div>
     </div>

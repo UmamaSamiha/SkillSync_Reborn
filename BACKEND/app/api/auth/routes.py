@@ -26,7 +26,9 @@ def register():
     """
     Register a new user.
     Body: { email, password, full_name, role? }
-    Role defaults to 'student'; only admins can create teachers/admins.
+    Role defaults to 'student'. Students are active immediately; teacher
+    applications are held for admin approval (see /api/admin/pending-users).
+    Admin accounts cannot be created through public self-registration.
     """
     data = request.get_json(silent=True) or {}
 
@@ -40,8 +42,9 @@ def register():
     full_name = data["full_name"].strip()
     role      = data.get("role", Role.STUDENT)
 
-    # Only allow student self-registration; teachers/admins need admin invite
-    if role not in [Role.STUDENT, Role.TEACHER, Role.ADMIN]:
+    # Public self-registration only allows student/teacher; admins are
+    # created by other admins, never through this endpoint.
+    if role not in [Role.STUDENT, Role.TEACHER]:
         return error("Invalid role", 400)
 
     # Email format validation
@@ -56,14 +59,16 @@ def register():
     if User.query.filter_by(email=email).first():
         return error("Email already registered", 409)
 
-    # Hash password and create user — active immediately
+    # Teacher applications need admin approval before they can log in
+    is_teacher_application = role == Role.TEACHER
+
     pw_hash = bcrypt.generate_password_hash(password).decode("utf-8")
     user = User(
         email=email,
         password_hash=pw_hash,
         full_name=full_name,
         role=role,
-        is_active=True,
+        is_active=not is_teacher_application,
     )
     db.session.add(user)
     db.session.flush()
@@ -82,8 +87,10 @@ def register():
     for admin in admins:
         n = Notification(
             user_id     = admin.id,
-            title       = f"New {role.title()} Registration",
-            message     = f"{full_name} ({email}) has registered as a {role}.",
+            title       = f"New {role.title()} Registration"
+                           + (" — approval needed" if is_teacher_application else ""),
+            message     = f"{full_name} ({email}) has registered as a {role}."
+                           + (" Awaiting your approval." if is_teacher_application else ""),
             type        = "info",
             entity_type = "user",
             entity_id   = user.id,
@@ -91,6 +98,12 @@ def register():
         db.session.add(n)
 
     db.session.commit()
+
+    if is_teacher_application:
+        return success({
+            "user":    user.to_dict(),
+            "pending": True,
+        }, "Application submitted — an admin will review your teacher account shortly", 201)
 
     access_token  = create_access_token(identity=user.id)
     refresh_token = create_refresh_token(identity=user.id)

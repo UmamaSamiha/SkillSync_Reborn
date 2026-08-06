@@ -1,0 +1,105 @@
+/* ── Word-style rich text editor ─────────────────────────── */
+.doc-editor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.doc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.doc-toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+.doc-toolbar-btn:hover:not(:disabled) {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+.doc-toolbar-btn.active {
+  background: var(--color-primary-glass);
+  color: var(--color-primary);
+}
+.doc-toolbar-btn:disabled { opacity: 0.35; cursor: default; }
+
+.doc-toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--color-border);
+  margin: 0 6px;
+}
+
+/* ── The "page" ───────────────────────────────────────────── */
+.doc-page-wrap {
+  background: var(--color-border, #e9e9e9);
+  padding: 24px 16px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+
+.doc-page {
+  max-width: 720px;
+  min-height: 380px;
+  margin: 0 auto;
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
+  padding: 56px 64px;
+  border-radius: 2px;
+}
+
+.doc-page .ProseMirror {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #1a1a1a;
+  min-height: 300px;
+  outline: none;
+}
+
+.doc-page .ProseMirror h1 { font-size: 1.6rem; margin: 0.6em 0 0.4em; }
+.doc-page .ProseMirror h2 { font-size: 1.3rem; margin: 0.6em 0 0.4em; }
+.doc-page .ProseMirror p  { margin: 0 0 0.8em; }
+.doc-page .ProseMirror ul,
+.doc-page .ProseMirror ol { padding-left: 1.4em; margin: 0 0 0.8em; }
+.doc-page .ProseMirror blockquote {
+  border-left: 3px solid #ccc;
+  padding-left: 14px;
+  margin: 0 0 0.8em;
+  color: #555;
+  font-style: italic;
+}
+
+.doc-page .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9a9a9a;
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .doc-page { padding: 32px 24px; }
+}
+
+/* ── Read-only rendered submission (teacher view) ─────────── */
+.doc-readonly .doc-toolbar { display: none; }
+.doc-readonly .doc-page-wrap { padding: 12px; max-height: 320px; }
+.doc-readonly .doc-page { box-shadow: none; border: 1px solid var(--color-border); padding: 24px 32px; min-height: unset; }

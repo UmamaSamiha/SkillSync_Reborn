@@ -1,28 +1,57 @@
 """
 SkillSync — Courses API
 ========================
-GET  /api/courses/              List all courses with enrollment status
-GET  /api/courses/<id>          Course detail
-POST /api/courses/              Create course (teacher/admin)
-POST /api/courses/<id>/enroll   Enroll current user
-DELETE /api/courses/<id>/enroll Unenroll current user
+GET    /api/courses/                 List courses with enrollment status
+                                      (active courses, plus the caller's own
+                                      pending/deleted ones if they're the instructor)
+GET    /api/courses/<id>             Course detail
+POST   /api/courses/                 Create course (teacher/admin) — teacher-created
+                                      courses start as pending_approval
+DELETE /api/courses/<id>             Request removal (teacher) / remove (admin)
+GET    /api/courses/pending          List courses awaiting admin approval (admin only)
+POST   /api/courses/<id>/approve     Approve a pending course (admin only)
+POST   /api/courses/<id>/reject      Reject a pending course (admin only)
+POST   /api/courses/<id>/enroll      Enroll current user
+DELETE /api/courses/<id>/enroll      Unenroll current user
 """
 
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
+from sqlalchemy import or_
 
 from app import db
-from app.models import Course, CourseEnrollment, Project, ProjectMember
+from app.models import (
+    Course, CourseStatus, CourseEnrollment, Project, ProjectMember,
+    User, Role, Notification,
+)
 from app.utils.helpers import success, error, get_current_user, teacher_or_admin
 
 courses_bp = Blueprint("courses", __name__)
 
 
+def _notify_admins(title, message, entity_id=None):
+    admins = User.query.filter_by(role=Role.ADMIN, is_active=True).all()
+    for admin in admins:
+        db.session.add(Notification(
+            user_id=admin.id, title=title, message=message,
+            type="info", entity_type="course", entity_id=entity_id,
+        ))
+
+
 @courses_bp.route("/", methods=["GET"])
 @jwt_required()
 def list_courses():
-    user    = get_current_user()
-    courses = Course.query.order_by(Course.code).all()
+    user = get_current_user()
+
+    if user.role == Role.ADMIN:
+        query = Course.query
+    else:
+        # Everyone sees the active catalog; instructors additionally see
+        # their own courses while pending approval/deletion.
+        query = Course.query.filter(
+            or_(Course.status == CourseStatus.ACTIVE, Course.instructor_id == user.id)
+        )
+    courses = query.order_by(Course.code).all()
 
     enrolled_ids = {
         e.course_id
@@ -64,7 +93,11 @@ def create_course():
     if Course.query.filter_by(code=data["code"].upper().strip()).first():
         return error("Course code already exists", 409)
 
-    user   = get_current_user()
+    user = get_current_user()
+    # Admin-created courses go live immediately; teacher-created courses
+    # need admin sign-off before they appear in the public catalog.
+    status = CourseStatus.ACTIVE if user.role == Role.ADMIN else CourseStatus.PENDING_APPROVAL
+
     course = Course(
         code          = data["code"].upper().strip(),
         title         = data["title"].strip(),
@@ -72,6 +105,7 @@ def create_course():
         credits       = int(data.get("credits", 3)),
         topic_keyword = data.get("topic_keyword", ""),
         instructor_id = user.id,
+        status        = status,
     )
     db.session.add(course)
     db.session.flush()  # get course.id before commit
@@ -94,8 +128,18 @@ def create_course():
         role_in_group = "instructor",
     ))
 
+    if status == CourseStatus.PENDING_APPROVAL:
+        _notify_admins(
+            "New course pending approval",
+            f"{user.full_name} requested a new course: {course.code} — {course.title}",
+            entity_id=course.id,
+        )
+        msg = "Course submitted — pending admin approval"
+    else:
+        msg = "Course created"
+
     db.session.commit()
-    return success(course.to_dict(), "Course created", 201)
+    return success(course.to_dict(), msg, 201)
 
 
 @courses_bp.route("/mine/students", methods=["GET"])
@@ -119,7 +163,12 @@ def my_course_students():
 @teacher_or_admin
 def my_courses():
     user    = get_current_user()
-    courses = Course.query.filter_by(instructor_id=user.id).order_by(Course.code).all()
+    courses = (
+        Course.query
+        .filter(Course.instructor_id == user.id, Course.status != CourseStatus.DELETED)
+        .order_by(Course.code)
+        .all()
+    )
     result  = []
     for c in courses:
         d = c.to_dict()
@@ -127,6 +176,126 @@ def my_courses():
         d["assignment_count"] = sum(p.assignments.count() for p in c.projects.all())
         result.append(d)
     return success(result)
+
+
+# ── DELETE /api/courses/<id> — request/perform removal ────────────────────────
+
+@courses_bp.route("/<course_id>", methods=["DELETE"])
+@jwt_required()
+@teacher_or_admin
+def delete_course(course_id):
+    user   = get_current_user()
+    course = Course.query.get(course_id)
+    if not course:
+        return error("Course not found", 404)
+
+    if user.role == Role.ADMIN:
+        course.status = CourseStatus.DELETED
+        db.session.commit()
+        return success(None, "Course removed")
+
+    # Teacher: only the owning instructor can request removal of their own course
+    if course.instructor_id != user.id:
+        return error("You can only remove your own courses", 403)
+    if course.status == CourseStatus.PENDING_DELETION:
+        return error("Removal already pending admin approval", 409)
+
+    course.status = CourseStatus.PENDING_DELETION
+    _notify_admins(
+        "Course removal requested",
+        f"{user.full_name} requested to remove course: {course.code} — {course.title}",
+        entity_id=course.id,
+    )
+    db.session.commit()
+    return success(course.to_dict(), "Removal requested — pending admin approval")
+
+
+# ── GET /api/courses/pending — admin review queue ──────────────────────────────
+
+@courses_bp.route("/pending", methods=["GET"])
+@jwt_required()
+def pending_courses():
+    user = get_current_user()
+    if user.role != Role.ADMIN:
+        return error("Admin access required", 403)
+
+    courses = (
+        Course.query
+        .filter(Course.status.in_([CourseStatus.PENDING_APPROVAL, CourseStatus.PENDING_DELETION]))
+        .order_by(Course.created_at.desc())
+        .all()
+    )
+    return success([c.to_dict() for c in courses])
+
+
+# ── POST /api/courses/<id>/approve — admin approves pending request ───────────
+
+@courses_bp.route("/<course_id>/approve", methods=["POST"])
+@jwt_required()
+def approve_course(course_id):
+    user = get_current_user()
+    if user.role != Role.ADMIN:
+        return error("Admin access required", 403)
+
+    course = Course.query.get(course_id)
+    if not course:
+        return error("Course not found", 404)
+    if course.status not in (CourseStatus.PENDING_APPROVAL, CourseStatus.PENDING_DELETION):
+        return error("This course has no pending request", 409)
+
+    was_deletion = course.status == CourseStatus.PENDING_DELETION
+    course.status = CourseStatus.DELETED if was_deletion else CourseStatus.ACTIVE
+
+    if course.instructor_id:
+        db.session.add(Notification(
+            user_id=course.instructor_id,
+            title="Course removed" if was_deletion else "Course approved",
+            message=(
+                f"Your removal request for {course.code} was approved."
+                if was_deletion else
+                f"Your course {course.code} — {course.title} was approved and is now live."
+            ),
+            type="info", entity_type="course", entity_id=course.id,
+        ))
+
+    db.session.commit()
+    return success(course.to_dict(), "Request approved")
+
+
+# ── POST /api/courses/<id>/reject — admin rejects pending request ─────────────
+
+@courses_bp.route("/<course_id>/reject", methods=["POST"])
+@jwt_required()
+def reject_course(course_id):
+    user = get_current_user()
+    if user.role != Role.ADMIN:
+        return error("Admin access required", 403)
+
+    course = Course.query.get(course_id)
+    if not course:
+        return error("Course not found", 404)
+    if course.status not in (CourseStatus.PENDING_APPROVAL, CourseStatus.PENDING_DELETION):
+        return error("This course has no pending request", 409)
+
+    was_deletion = course.status == CourseStatus.PENDING_DELETION
+    # Rejecting a deletion request just restores the course; rejecting a new
+    # course request means it never goes live.
+    course.status = CourseStatus.ACTIVE if was_deletion else CourseStatus.DELETED
+
+    if course.instructor_id:
+        db.session.add(Notification(
+            user_id=course.instructor_id,
+            title="Removal request rejected" if was_deletion else "Course request rejected",
+            message=(
+                f"Your removal request for {course.code} was rejected — the course stays active."
+                if was_deletion else
+                f"Your course request {course.code} — {course.title} was rejected by an admin."
+            ),
+            type="warning", entity_type="course", entity_id=course.id,
+        ))
+
+    db.session.commit()
+    return success(course.to_dict(), "Request rejected")
 
 
 @courses_bp.route("/<course_id>/projects", methods=["GET"])

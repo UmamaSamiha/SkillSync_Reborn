@@ -14,7 +14,7 @@ from sqlalchemy import func
 
 from app import db
 from app.models import (
-    User, FocusSession, ActivityLog, EngagementScore,
+    User, TimeLog, ActivityLog, EngagementScore,
     Submission, GradeRecord, ProjectMember, Assignment
 )
 from app.utils.helpers import success, error, get_current_user
@@ -89,46 +89,6 @@ def performance_trends(user_id):
     })
 
 
-# ── WEEKLY PRODUCTIVITY ───────────────────────────────────────────
-
-@analytics_bp.route("/weekly-productivity/<user_id>", methods=["GET"])
-@jwt_required()
-def weekly_productivity(user_id):
-    current = get_current_user()
-
-    if not _check_access(current, user_id):
-        return error("Forbidden", 403)
-
-    today      = datetime.now(timezone.utc).date()
-    week_start = today - timedelta(days=today.weekday())
-
-    sessions = FocusSession.query.filter(
-        FocusSession.user_id == user_id,
-        func.date(FocusSession.started_at) >= week_start,
-        func.date(FocusSession.started_at) <= week_start + timedelta(days=6),
-    ).all()
-
-    daily = defaultdict(float)
-    for s in sessions:
-        daily[str(s.started_at.date())] += s.duration_minutes / 60
-
-    days = []
-    for i in range(7):
-        d  = week_start + timedelta(days=i)
-        ds = str(d)
-        days.append({
-            "date":  ds,
-            "day":   d.strftime("%a"),
-            "hours": round(daily.get(ds, 0), 2),
-        })
-
-    return success({
-        "days":        days,
-        "total_hours": round(sum(x["hours"] for x in days), 2),
-        "week_start":  str(week_start),
-    })
-
-
 # ── CONTRIBUTION ──────────────────────────────────────────────────
 
 @analytics_bp.route("/contribution/<project_id>", methods=["GET"])
@@ -200,7 +160,9 @@ def engagement_score(user_id):
     })
 
 
-# ── TOPIC TIME ────────────────────────────────────────────────────
+# ── TIME BY COURSE ────────────────────────────────────────────────
+# Sourced from the Time Tracker (TimeLog) — replaces the old Focus
+# Mode "topic time" breakdown now that focus sessions are gone.
 
 @analytics_bp.route("/topic-time/<user_id>", methods=["GET"])
 @jwt_required()
@@ -210,14 +172,15 @@ def topic_time_breakdown(user_id):
     if not _check_access(current, user_id):
         return error("Forbidden", 403)
 
-    sessions  = FocusSession.query.filter_by(user_id=user_id).all()
-    by_topic  = defaultdict(float)
+    logs     = TimeLog.query.filter_by(user_id=user_id).all()
+    by_course = defaultdict(float)
 
-    for s in sessions:
-        by_topic[s.topic_label or "General"] += s.duration_minutes / 60
+    for log in logs:
+        label = log.course.title if log.course else "General"
+        by_course[label] += log.minutes / 60
 
     topics = sorted(
-        [{"topic": k, "hours": round(v, 2)} for k, v in by_topic.items()],
+        [{"topic": k, "hours": round(v, 2)} for k, v in by_course.items()],
         key=lambda x: x["hours"], reverse=True
     )
 
@@ -235,7 +198,7 @@ def user_summary(user_id):
         return error("Forbidden", 403)
 
     total_minutes = db.session.query(
-        func.sum(FocusSession.duration_minutes)
+        func.sum(TimeLog.minutes)
     ).filter_by(user_id=user_id).scalar() or 0
 
     submissions = Submission.query.filter_by(student_id=user_id).count()
@@ -248,10 +211,10 @@ def user_summary(user_id):
     streak = _calc_streak(user_id)
 
     return success({
-        "total_focus_hours":  round(total_minutes / 60, 1),
+        "total_study_hours":  round(total_minutes / 60, 1),
         "total_submissions":  submissions,
         "average_grade":      avg_grade,
-        "focus_streak_days":  streak,
+        "study_streak_days":  streak,
     })
 
 
@@ -348,9 +311,9 @@ def _calc_streak(user_id: str) -> int:
     streak = 0
 
     while True:
-        count = FocusSession.query.filter(
-            FocusSession.user_id == user_id,
-            func.date(FocusSession.started_at) == today,
+        count = TimeLog.query.filter(
+            TimeLog.user_id   == user_id,
+            TimeLog.logged_at == today,
         ).count()
 
         if count == 0:

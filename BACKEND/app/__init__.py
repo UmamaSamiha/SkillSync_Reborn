@@ -60,7 +60,6 @@ def create_app(config_name: str = None) -> Flask:
     from app.api.analytics.routes    import analytics_bp
     from app.api.admin.routes        import admin_bp
     from app.api.portfolio.routes    import portfolio_bp
-    from app.api.focus.routes        import focus_bp
     from app.api.heatmap.routes      import heatmap_bp
     from app.api.certificates.routes import certificates_bp
     from app.api.notifications.routes import notifications_bp
@@ -78,7 +77,6 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(analytics_bp,    url_prefix="/api/analytics")
     app.register_blueprint(admin_bp,        url_prefix="/api/admin")
     app.register_blueprint(portfolio_bp,    url_prefix="/api/portfolio")
-    app.register_blueprint(focus_bp,        url_prefix="/api/focus")
     app.register_blueprint(heatmap_bp,      url_prefix="/api/heatmap")
     app.register_blueprint(certificates_bp, url_prefix="/api/certificates")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")

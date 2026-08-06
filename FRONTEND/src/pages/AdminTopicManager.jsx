@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
+import { Save, CheckCircle2, Plus, Search, Inbox, SearchX } from 'lucide-react';
 
 const TRACKS = ['Python Basics', 'Control Flow', 'Functions', 'Data Structures', 'General'];
 
@@ -170,8 +171,10 @@ function TopicFormModal({ existingTopics, editTopic, onClose, onSaved }) {
         )}
 
         <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}
-          style={{ fontSize: 14, padding: '10px 0', width: '100%' }}>
-          {saving ? 'Saving…' : editTopic ? '💾 Save Changes' : '✅ Create Topic'}
+          style={{ fontSize: 14, padding: '10px 0', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          {saving
+            ? 'Saving…'
+            : editTopic ? <><Save size={15} /> Save Changes</> : <><CheckCircle2 size={15} /> Create Topic</>}
         </button>
       </div>
     </div>
@@ -235,8 +238,8 @@ export default function AdminTopicManager() {
           </p>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreate(true)}
-          style={{ fontSize: 14, padding: '10px 20px', flexShrink: 0 }}>
-          ➕ Add New Topic
+          style={{ fontSize: 14, padding: '10px 20px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Plus size={15} /> Add New Topic
         </button>
       </div>
 
@@ -258,9 +261,12 @@ export default function AdminTopicManager() {
 
       {/* Filters */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-        <input className="input" placeholder="🔍 Search topics…"
-          value={search} onChange={e => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 200 }} />
+        <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
+          <Search size={15} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--color-muted)' }} />
+          <input className="input" placeholder="Search topics…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', paddingLeft: 36 }} />
+        </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {tracks.map(t => (
             <button key={t} className="btn"
@@ -287,10 +293,10 @@ export default function AdminTopicManager() {
           borderRadius: 14,
         }}>
           {topics.length === 0
-            ? <><div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+            ? <><Inbox size={30} style={{ marginBottom: 12, opacity: 0.6 }} />
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>No topics yet</div>
                 <div style={{ fontSize: 13 }}>Click "Add New Topic" to get started.</div></>
-            : <><div style={{ fontSize: 32, marginBottom: 12 }}>🔎</div>
+            : <><SearchX size={30} style={{ marginBottom: 12, opacity: 0.6 }} />
                 <div style={{ fontWeight: 600 }}>No topics match your search.</div></>
           }
         </div>

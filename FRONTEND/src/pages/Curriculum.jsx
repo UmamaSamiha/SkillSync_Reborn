@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { Lock, LockOpen, Zap, CheckCircle2, FileEdit } from 'lucide-react';
 
 const STATUS = {
-  locked:      { icon: '🔒', label: 'Locked',                             color: 'var(--color-muted)',   bg: 'rgba(139,146,165,.08)' },
-  unlocked:    { icon: '🔓', label: 'Submit work to teacher for scoring', color: 'var(--color-amber)',   bg: 'rgba(245,158,11,.08)'  },
-  in_progress: { icon: '⚡', label: 'Awaiting teacher score',             color: 'var(--color-primary)', bg: 'rgba(99,102,241,.08)'  },
-  mastered:    { icon: '✅', label: 'Mastered',                           color: 'var(--color-green)',   bg: 'rgba(34,197,94,.08)'   },
+  locked:      { icon: Lock,        label: 'Locked',                             color: 'var(--color-muted)',   bg: 'rgba(139,146,165,.08)' },
+  unlocked:    { icon: LockOpen,    label: 'Submit work to teacher for scoring', color: 'var(--color-amber)',   bg: 'rgba(245,158,11,.08)'  },
+  in_progress: { icon: Zap,         label: 'Awaiting teacher score',             color: 'var(--color-primary)', bg: 'rgba(99,102,241,.08)'  },
+  mastered:    { icon: CheckCircle2, label: 'Mastered',                          color: 'var(--color-green)',   bg: 'rgba(34,197,94,.08)'   },
 };
 
 function TopicCard({ topic, index }) {
@@ -43,8 +44,9 @@ function TopicCard({ topic, index }) {
               fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 20,
               background: 'var(--color-surface)', color: st.color,
               border: `1px solid ${st.color}33`,
+              display: 'inline-flex', alignItems: 'center', gap: 4,
             }}>
-              {st.icon} {st.label}
+              <st.icon size={11} /> {st.label}
             </span>
             {topic.user_score != null && (
               <span style={{ fontSize: 11, color: 'var(--color-muted)' }}>
@@ -79,9 +81,9 @@ function TopicCard({ topic, index }) {
           <button
             className="btn btn-primary"
             onClick={() => navigate(`/submit?topicId=${topic.id}&topicTitle=${encodeURIComponent(topic.title)}`)}
-            style={{ fontSize: 12, padding: '6px 14px', flexShrink: 0 }}
+            style={{ fontSize: 12, padding: '6px 14px', flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            📝 Submit Work
+            <FileEdit size={13} /> Submit Work
           </button>
         )}
       </div>

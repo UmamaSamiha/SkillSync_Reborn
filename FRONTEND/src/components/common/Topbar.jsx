@@ -9,8 +9,7 @@ function getInitials(name = '') {
 
 const BREADCRUMBS = {
   '/dashboard': ['Dashboard'],
-  '/focus':     ['Dashboard', 'Focus Mode'],
-  '/history':   ['Dashboard', 'Focus Mode', 'Session History'],
+  '/timetracker': ['Dashboard', 'Time Tracker'],
   '/analytics': ['Dashboard', 'Analytics'],
   '/heatmap':   ['Dashboard', 'Projects', 'Heatmap'],
   '/portfolio': ['Dashboard', 'Portfolio'],

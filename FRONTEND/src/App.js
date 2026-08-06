@@ -4,15 +4,23 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/common/Sidebar';
 import LoginPage from './pages/Login';
 import HeatmapPage from './pages/Heatmap';
-import FocusPage from './pages/Focus';
-import HistoryPage from './pages/History';
 import MemberDetailPage from './pages/MemberDetail';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminOverview from './pages/AdminOverview';
+import AdminRisk from './pages/AdminRisk';
+import AdminClassification from './pages/AdminClassification';
+import AdminEngagement from './pages/AdminEngagement';
+import AdminCertificates from './pages/AdminCertificates';
+import AdminCourseApprovals from './pages/AdminCourseApprovals';
+import AdminTeacherApprovals from './pages/AdminTeacherApprovals';
+import AdminVerify from './pages/AdminVerify';
 import TeacherDashboard from './pages/TeacherDashboard';
+import TeacherPerformance from './pages/TeacherPerformance';
 import Certificates from './pages/Certificates';
 import SignupPage from './pages/Signup';
 import AnalyticsPage from './pages/AnalyticsPage';
 import AssignmentsPage from './pages/Assignments';
+import AssignmentSubmissionsPage from './pages/AssignmentSubmissions';
+import SubmissionViewPage from './pages/SubmissionView';
 import NotificationsPage from './pages/Notifications';
 import CoursesPage from './pages/Courses';
 import TimeTrackerPage from './pages/TimeTracker';
@@ -66,12 +74,6 @@ function AppRoutes() {
       <Route path="/dashboard" element={
         <PrivateRoute><HeatmapPage /></PrivateRoute>
       }/>
-      <Route path="/focus" element={
-        <PrivateRoute><FocusPage /></PrivateRoute>
-      }/>
-      <Route path="/history" element={
-        <PrivateRoute><HistoryPage /></PrivateRoute>
-      }/>
        <Route path="/heatmap" element={
         <PrivateRoute><HeatmapPage /></PrivateRoute>
       }/>
@@ -101,6 +103,9 @@ function AppRoutes() {
       <Route path="/teacher" element={
         <PrivateRoute teacherOnly={true}><TeacherDashboard /></PrivateRoute>
       }/>
+      <Route path="/teacher/performance" element={
+        <PrivateRoute teacherOnly={true}><TeacherPerformance /></PrivateRoute>
+      }/>
 
       {/* Anushka's teacher routes */}
       <Route path="/teacher/edits" element={
@@ -114,6 +119,12 @@ function AppRoutes() {
       {/* Shared routes */}
       <Route path="/assignments" element={
         <PrivateRoute><AssignmentsPage /></PrivateRoute>
+      }/>
+      <Route path="/assignments/:assignmentId" element={
+        <PrivateRoute teacherOnly={true}><AssignmentSubmissionsPage /></PrivateRoute>
+      }/>
+      <Route path="/assignments/:assignmentId/submissions/:submissionId" element={
+        <PrivateRoute teacherOnly={true}><SubmissionViewPage /></PrivateRoute>
       }/>
       <Route path="/notifications" element={
         <PrivateRoute><NotificationsPage /></PrivateRoute>
@@ -134,7 +145,28 @@ function AppRoutes() {
 
       {/* Admin routes */}
       <Route path="/admin" element={
-        <PrivateRoute adminOnly={true}><AdminDashboard /></PrivateRoute>
+        <PrivateRoute adminOnly={true}><AdminOverview /></PrivateRoute>
+      }/>
+      <Route path="/admin/risk" element={
+        <PrivateRoute adminOnly={true}><AdminRisk /></PrivateRoute>
+      }/>
+      <Route path="/admin/classification" element={
+        <PrivateRoute adminOnly={true}><AdminClassification /></PrivateRoute>
+      }/>
+      <Route path="/admin/engagement" element={
+        <PrivateRoute adminOnly={true}><AdminEngagement /></PrivateRoute>
+      }/>
+      <Route path="/admin/certificates" element={
+        <PrivateRoute adminOnly={true}><AdminCertificates /></PrivateRoute>
+      }/>
+      <Route path="/admin/course-approvals" element={
+        <PrivateRoute adminOnly={true}><AdminCourseApprovals /></PrivateRoute>
+      }/>
+      <Route path="/admin/teacher-approvals" element={
+        <PrivateRoute adminOnly={true}><AdminTeacherApprovals /></PrivateRoute>
+      }/>
+      <Route path="/admin/verify" element={
+        <PrivateRoute adminOnly={true}><AdminVerify /></PrivateRoute>
       }/>
 
       {/* Anushka's admin routes */}

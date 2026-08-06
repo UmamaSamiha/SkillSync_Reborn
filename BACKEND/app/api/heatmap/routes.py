@@ -13,7 +13,7 @@ from flask_jwt_extended import jwt_required
 from sqlalchemy import func
 
 from app import db
-from app.models import ActivityLog, ProjectMember, User, Notification
+from app.models import ActivityLog, ProjectMember, User, Notification, Project
 from app.utils.helpers import success, error, get_current_user
 
 heatmap_bp = Blueprint("heatmap", __name__)
@@ -27,7 +27,30 @@ def project_heatmap(project_id):
     """
     Return 7-day activity grid per member + contribution share.
     Query: ?days=7 (default 7, max 30)
+
+    Students only ever see their own row — the full team roster is
+    restricted to the teacher who owns the course/project, and admins.
     """
+    current = get_current_user()
+    project = Project.query.get(project_id)
+    if not project:
+        return error("Project not found", 404)
+
+    is_own_project = (
+        project.created_by == current.id
+        or (project.course and project.course.instructor_id == current.id)
+    )
+
+    if current.role == "student":
+        is_member = ProjectMember.query.filter_by(
+            project_id=project_id, user_id=current.id, is_active=True
+        ).first()
+        if not is_member:
+            return error("Forbidden", 403)
+    elif current.role == "teacher" and not is_own_project:
+        return error("Forbidden", 403)
+    # admins may view any project's heatmap
+
     days_back  = min(int(request.args.get("days", 7)), 30)
     cutoff     = datetime.now(timezone.utc) - timedelta(days=days_back)
     today      = datetime.now(timezone.utc).date()
@@ -43,6 +66,10 @@ def project_heatmap(project_id):
         )
         .all()
     )
+
+    # Students only ever see themselves in the roster
+    if current.role == "student":
+        members = [m for m in members if m.user_id == current.id]
 
     # Activity logs for the project in the window
     logs = ActivityLog.query.filter(
@@ -123,10 +150,19 @@ def project_heatmap(project_id):
 @jwt_required()
 def notify_inactive(project_id):
     """Send notifications to inactive members."""
-    from app.utils.helpers import teacher_or_admin
     user    = get_current_user()
     if user.role not in ["admin", "teacher"]:
         return error("Forbidden", 403)
+
+    project = Project.query.get(project_id)
+    if not project:
+        return error("Project not found", 404)
+    if user.role == "teacher":
+        owns = project.created_by == user.id or (
+            project.course and project.course.instructor_id == user.id
+        )
+        if not owns:
+            return error("Forbidden", 403)
 
     inactive_days = int(request.args.get("inactive_days", 5))
     cutoff        = datetime.now(timezone.utc) - timedelta(days=inactive_days)

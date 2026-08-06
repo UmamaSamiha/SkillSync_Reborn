@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from flask import Blueprint, request, current_app, send_file
 from flask_jwt_extended import jwt_required
 from app import db
-from app.models import Certificate, User, FocusSession, GradeRecord
+from app.models import Certificate, User, TimeLog, GradeRecord
 from app.utils.helpers import success, error, get_current_user, teacher_or_admin
 from sqlalchemy import func
 
@@ -46,9 +46,9 @@ def generate_certificate():
     if not user:
         return error("Student not found", 404)
 
-    # Calculate study hours from focus sessions
+    # Calculate study hours from the Time Tracker
     total_minutes = db.session.query(
-        func.sum(FocusSession.duration_minutes)
+        func.sum(TimeLog.minutes)
     ).filter_by(user_id=user_id).scalar() or 0
 
     # Auto-calculate grade from GradeRecords if not provided

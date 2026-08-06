@@ -1,10 +1,15 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from app import db
-from app.models import AnushkaQuestionBank, AnushkaQuestion
+from app.models import AnushkaQuestionBank, AnushkaQuestion, Course, Role
 from app.utils.helpers import success, error, get_current_user
 
 qbank_bp = Blueprint("anushka_qbank", __name__)
+
+
+def _can_modify_bank(user, bank):
+    """Only the bank's creator, or an admin, may edit/delete it or its questions."""
+    return user.role == Role.ADMIN or bank.created_by == user.id
 
 
 @qbank_bp.route("", methods=["GET"], strict_slashes=False)
@@ -27,10 +32,21 @@ def create_bank():
     title = data.get("title", "").strip()
     if not title:
         return error("title is required", 400)
+
+    course_id = data.get("course_id")
+    if not course_id:
+        return error("course_id is required — pick the subject this bank is for", 400)
+    course = Course.query.get(course_id)
+    if not course:
+        return error("Course not found", 404)
+    if user.role == Role.TEACHER and course.instructor_id != user.id:
+        return error("You can only create question banks for your own courses", 403)
+
     bank = AnushkaQuestionBank(
         title       = title,
         description = data.get("description", ""),
         track       = data.get("track", ""),
+        course_id   = course_id,
         created_by  = user.id,
     )
     db.session.add(bank)
@@ -60,6 +76,8 @@ def delete_bank(bank_id):
     bank = AnushkaQuestionBank.query.get(bank_id)
     if not bank:
         return error("Question bank not found", 404)
+    if not _can_modify_bank(user, bank):
+        return error("You can only delete your own question banks", 403)
     db.session.delete(bank)
     db.session.commit()
     return success(None, "Question bank deleted")
@@ -87,6 +105,8 @@ def add_question(bank_id):
     bank = AnushkaQuestionBank.query.get(bank_id)
     if not bank:
         return error("Question bank not found", 404)
+    if not _can_modify_bank(user, bank):
+        return error("You can only add questions to your own question banks", 403)
     data = request.get_json(silent=True) or {}
     text = data.get("text", "").strip()
     if not text:
@@ -111,6 +131,11 @@ def delete_question(bank_id, question_id):
     user = get_current_user()
     if not user or str(user.role) not in ("admin", "teacher"):
         return error("Admin or Teacher access required", 403)
+    bank = AnushkaQuestionBank.query.get(bank_id)
+    if not bank:
+        return error("Question bank not found", 404)
+    if not _can_modify_bank(user, bank):
+        return error("You can only delete questions from your own question banks", 403)
     question = AnushkaQuestion.query.filter_by(id=question_id, bank_id=bank_id).first()
     if not question:
         return error("Question not found", 404)

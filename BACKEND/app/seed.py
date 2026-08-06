@@ -12,9 +12,9 @@ import random
 from app import db, bcrypt
 from app.models import (
     User, Project, ProjectMember, Topic, Assignment, Submission,
-    FocusSession, ActivityLog, EngagementScore, Portfolio,
+    ActivityLog, EngagementScore, Portfolio,
     PortfolioProject, GradeRecord, RiskProfile, Certificate,
-    Notification, EditHistory, SubmissionStatus, SessionStatus,
+    Notification, EditHistory, SubmissionStatus,
     Role, DifficultyLevel, Course, CourseEnrollment, TimeLog
 )
 
@@ -70,11 +70,11 @@ def seed_all():
 
     admin = User(
         email="admin@skillsync.edu", password_hash=pw,
-        full_name="Dr. Admin", role=Role.ADMIN
+        full_name="Admin", role=Role.ADMIN
     )
     teacher = User(
         email="teacher@skillsync.edu", password_hash=pw,
-        full_name="Prof. Rahman", role=Role.TEACHER
+        full_name="Teacher", role=Role.TEACHER
     )
 
     students = []
@@ -236,34 +236,6 @@ def seed_all():
                 is_large_paste   = False,
                 version_number   = 1,
             ))
-
-    # ── Focus Sessions ────────────────────────────────────────────────────
-    topic_labels = ["Database Systems", "Algorithms", "System Design", "Networks", "General Study"]
-
-    for idx, student in enumerate(students):
-        _, _, _, _, _, _, focus_mult = STUDENT_PROFILES[idx]
-        base_sessions = int(3 * focus_mult)
-
-        for day_offset in range(21):
-            day         = datetime.now(timezone.utc) - timedelta(days=day_offset)
-            num_sessions = max(0, int(random.gauss(base_sessions, 1)))
-
-            for _ in range(num_sessions):
-                duration = random.choice([25, 25, 50, 50, 90])
-                started  = day.replace(hour=random.randint(9, 20), minute=0, second=0)
-
-                db.session.add(FocusSession(
-                    user_id          = student.id,
-                    topic_label      = random.choice(topic_labels),
-                    duration_minutes = duration,
-                    sessions_count   = max(1, duration // 25),
-                    status           = random.choices(
-                        [SessionStatus.COMPLETED, SessionStatus.INTERRUPTED],
-                        weights=[0.85, 0.15]
-                    )[0],
-                    started_at = started,
-                    ended_at   = started + timedelta(minutes=duration),
-                ))
 
     # ── Activity Logs ─────────────────────────────────────────────────────
     action_types = [

@@ -1,10 +1,11 @@
 """
 SkillSync — AI Blueprint
 =========================
-Three endpoints:
   GET  /api/ai/member-detail/<user_id>  — aggregated member data for MemberDetail page
-  POST /api/ai/member-insight           — Claude-generated insight text for a member
-  POST /api/ai/session-summary          — Claude-generated productivity summary for History page
+  POST /api/ai/member-insight           — Gemini-generated insight text for a member
+  POST /api/ai/session-summary          — Gemini-generated productivity summary for History page
+  GET  /api/ai/my-submissions           — submissions for AI/plagiarism review (teacher: own assignments, admin: all)
+  POST /api/ai/scan/<submission_id>     — run AI + plagiarism detection on a submission
 """
 
 import os
@@ -18,7 +19,7 @@ import google.generativeai as genai
 from app import db
 from app.models import (
     User, ActivityLog, EngagementScore,
-    Submission, Assignment, RiskProfile, FocusSession, SubmissionScan
+    Submission, Assignment, RiskProfile, SubmissionScan
 )
 from app.utils.helpers import success, error, get_current_user
 
@@ -229,14 +230,52 @@ def session_summary():
 
     return success({"summary": summary})
 
-# ── 4. POST /api/ai/scan/<submission_id> ─────────────────────────────────────
+# ── 4. GET /api/ai/my-submissions ─────────────────────────────────────────────
 
-@ai_bp.route("/scan/<int:submission_id>", methods=["POST"])
+@ai_bp.route("/my-submissions", methods=["GET"])
+@jwt_required()
+def my_submissions():
+    """
+    List submissions for AI/plagiarism review. Teachers see only submissions
+    for assignments they created; admins see everything.
+    """
+    current = get_current_user()
+    if not current or current.role not in ("admin", "teacher"):
+        return error("Forbidden", 403)
+
+    query = Submission.query.join(Assignment, Submission.assignment_id == Assignment.id)
+    if current.role == "teacher":
+        query = query.filter(Assignment.created_by == current.id)
+
+    submissions = query.order_by(Submission.submitted_at.desc()).all()
+    data = []
+    for sub in submissions:
+        d = sub.to_dict()
+        d["student_name"]     = sub.student.full_name if sub.student else "Unknown Student"
+        d["assignment_title"] = sub.assignment.title   if sub.assignment else "Unknown Assignment"
+        if d.get("ai_score") is None:
+            scan = (
+                SubmissionScan.query
+                .filter_by(submission_id=sub.id)
+                .order_by(SubmissionScan.scanned_at.desc())
+                .first()
+            )
+            d["ai_score"]         = float(scan.ai_score)         if scan and scan.ai_score         is not None else None
+            d["similarity_score"] = float(scan.similarity_score) if scan and scan.similarity_score is not None else None
+        data.append(d)
+
+    return success(data)
+
+
+# ── 5. POST /api/ai/scan/<submission_id> ─────────────────────────────────────
+
+@ai_bp.route("/scan/<submission_id>", methods=["POST"])
 @jwt_required()
 def scan_submission(submission_id):
     """
     Triggers an AI & similarity detection scan for a specific submission.
-    Admin / teacher only.
+    Admin / teacher only — teachers may only scan submissions for
+    assignments they created.
     """
     current = get_current_user()
     if not current or current.role not in ("admin", "teacher"):
@@ -246,14 +285,18 @@ def scan_submission(submission_id):
     if not submission:
         return error("Submission not found", 404)
 
+    if current.role == "teacher":
+        if not submission.assignment or submission.assignment.created_by != current.id:
+            return error("You can only scan submissions for your own assignments", 403)
+
     content = submission.content or ""
     if not content.strip():
         return error("Submission has no text content to scan", 400)
 
     try:
-        from app.services_ai_detection import analyze_submission, compute_similarity
+        from app.services.ai_detection import analyze_submission, compute_similarity
 
-        # ── AI detection via Claude + heuristics ─────────────────────────────
+        # ── AI detection via Gemini + heuristics ──────────────────────────────
         analysis = analyze_submission(content, use_claude=True)
 
         # ── Similarity check against other submissions for same assignment ───

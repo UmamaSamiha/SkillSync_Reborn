@@ -18,7 +18,8 @@ from app.models import (
 )
 from app.utils.helpers import (
     success, error, paginate, get_current_user,
-    teacher_or_admin, allowed_file, save_upload, validate_required
+    teacher_or_admin, allowed_file, save_upload, validate_required,
+    sanitize_rich_text
 )
 from app.services.ai_detection import check_ai_similarity
 
@@ -379,7 +380,7 @@ def submit_assignment(assignment_id):
 
     # ── Handle JSON content ────────────────────────────────────────────────
     data        = request.get_json(silent=True) or {}
-    new_content = data.get("content", submission.content or "")
+    new_content = sanitize_rich_text(data.get("content", submission.content or ""))
 
     # ── Edit history & paste detection ─────────────────────────────────────
     if new_content and new_content != submission.content:

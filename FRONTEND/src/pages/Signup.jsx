@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import './Login.css';
 
 const ROLES = [
-  { value: 'student', label: 'Student',  desc: 'Track assignments, focus sessions & grades' },
+  { value: 'student', label: 'Student',  desc: 'Track assignments, study time & grades' },
   { value: 'teacher', label: 'Teacher',  desc: 'Manage courses, grade submissions & monitor students' },
 ];
 
@@ -39,16 +39,19 @@ export default function SignupPage() {
         role,
       });
 
-      const { access_token, refresh_token, user } = res.data.data;
+      const { access_token, refresh_token, user, pending } = res.data.data;
+
+      if (pending) {
+        toast.success(res.data?.message || 'Application submitted — awaiting admin approval', { duration: 6000 });
+        navigate('/login');
+        return;
+      }
 
       localStorage.setItem('access_token',  access_token);
       localStorage.setItem('refresh_token', refresh_token);
 
       toast.success(`Welcome to SkillSync, ${user.full_name}!`);
-
-      if (user.role === 'admin')        navigate('/admin');
-      else if (user.role === 'teacher') navigate('/teacher');
-      else                              navigate('/dashboard');
+      navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Registration failed');
     } finally {
@@ -79,7 +82,7 @@ export default function SignupPage() {
             </div>
             <div className="preview-card">
               <div className="preview-dot amber" />
-              <span>Focus sessions with Pomodoro timer</span>
+              <span>Track your study time with the Time Tracker</span>
             </div>
             <div className="preview-card">
               <div className="preview-dot red" />

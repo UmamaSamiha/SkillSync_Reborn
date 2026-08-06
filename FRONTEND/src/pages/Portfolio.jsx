@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
@@ -265,7 +266,7 @@ export default function PortfolioPage() {
                   }
                 </h3>
                 {isOwner && (
-                  <button className="pf-delete-btn" onClick={() => handleDeleteProject(proj.id)}>🗑</button>
+                  <button className="pf-delete-btn" onClick={() => handleDeleteProject(proj.id)}><Trash2 size={14} /></button>
                 )}
               </div>
               {proj.description && <p className="pf-project-desc">{proj.description}</p>}

@@ -8,7 +8,7 @@ student classification, engagement overview.
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required
 
-from app.models import User, Submission, SubmissionScan, RiskProfile, GradeRecord, RiskLevel, FocusSession, Notification, Project, ProjectMember
+from app.models import User, Submission, SubmissionScan, RiskProfile, GradeRecord, RiskLevel, TimeLog, Notification, Project, ProjectMember
 from app.utils.helpers import success, error, admin_required, get_current_user
 from app.services.risk_engine import recalculate_risk
 from app.services.ai_detection import analyze_submission as run_ai_analysis, compute_similarity
@@ -48,9 +48,12 @@ def admin_overview():
 @jwt_required()
 @admin_required
 def pending_users():
-    """Get all users pending approval."""
+    """Get all users pending approval. Optional ?role=teacher|student filter."""
+    role_filter = request.args.get("role")
+    allowed_roles = [role_filter] if role_filter in ("student", "teacher") else ["student", "teacher"]
+
     users = User.query.filter_by(is_active=False).filter(
-        User.role.in_(["student", "teacher"])
+        User.role.in_(allowed_roles)
     ).order_by(User.created_at.desc()).all()
 
     return success([u.to_dict() for u in users])
@@ -261,11 +264,26 @@ def send_risk_alerts():
 
 
 # ── GET /api/admin/student-classification ────────────────────────────────────
+# Admins see every student; teachers only see students enrolled in their own courses.
 @admin_bp.route("/student-classification", methods=["GET"])
 @jwt_required()
-@admin_required
 def student_classification():
-    students = User.query.filter_by(role="student", is_active=True).all()
+    current = get_current_user()
+    if not current or current.role not in ("admin", "teacher"):
+        return error("Admin or Teacher access required", 403)
+
+    if current.role == "admin":
+        students = User.query.filter_by(role="student", is_active=True).all()
+    else:
+        from app.models import Course, CourseEnrollment
+        courses = Course.query.filter_by(instructor_id=current.id).all()
+        seen, students = set(), []
+        for course in courses:
+            for enrollment in course.enrollments.all():
+                if enrollment.student_id not in seen and enrollment.student.is_active:
+                    seen.add(enrollment.student_id)
+                    students.append(enrollment.student)
+
     result   = []
 
     for s in students:
@@ -280,7 +298,7 @@ def student_classification():
         grade_trend = risk.grade_trend if risk else "stable"
 
         total_minutes = db.session.query(
-            func.sum(FocusSession.duration_minutes)
+            func.sum(TimeLog.minutes)
         ).filter_by(user_id=s.id).scalar() or 0
 
         result.append({

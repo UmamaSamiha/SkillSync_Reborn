@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 import toast from 'react-hot-toast';
 import emailjs from '@emailjs/browser';
+import { Mail, CheckCircle2, AlertTriangle, Target, X } from 'lucide-react';
 
 const EMAILJS_SERVICE_ID  = 'service_av5ve0u';
 const EMAILJS_TEMPLATE_ID = 'template_d1u0xnp';
@@ -67,7 +68,7 @@ function EmailLogPanel({ logs }) {
       borderRadius: 14, padding: 20, marginBottom: 24,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span style={{ fontSize: 20 }}>📧</span>
+        <Mail size={18} style={{ color: 'var(--color-green)' }} />
         <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-green)' }}>
           EmailJS — Congratulations Emails Sent
         </h3>
@@ -86,7 +87,7 @@ function EmailLogPanel({ logs }) {
             background: 'rgba(34,197,94,.06)',
             border: '1px solid rgba(34,197,94,.2)',
           }}>
-            <span style={{ fontSize: 16 }}>✅</span>
+            <CheckCircle2 size={16} style={{ color: 'var(--color-green)', flexShrink: 0 }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600 }}>
                 {log.studentName}
@@ -173,7 +174,8 @@ function Timeline({ events, onCompare }) {
                     fontSize: 10, fontWeight: 700, padding: '1px 6px',
                     borderRadius: 20, background: 'rgba(239,68,68,.15)',
                     color: 'var(--color-red)',
-                  }}>⚠️ PASTE DETECTED</span>
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}><AlertTriangle size={11} /> PASTE DETECTED</span>
                 )}
               </div>
               <div style={{ fontSize: 11, color: 'var(--color-muted)', marginTop: 2 }}>
@@ -208,7 +210,8 @@ function DiffViewer({ evA, evB, onClose }) {
           <h3 style={{ fontWeight: 700 }}>Version Comparison</h3>
           <button className="btn" onClick={onClose} style={{
             background: 'var(--color-border)', color: 'var(--color-muted)', padding: '6px 14px',
-          }}>✕ Close</button>
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+          }}><X size={14} /> Close</button>
         </div>
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, fontSize: 12 }}>
           <span style={{ color: 'var(--color-muted)' }}>Version {formatDate(evA.created_at)}</span>
@@ -275,8 +278,8 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
       marginTop: 16, padding: 16, borderRadius: 10,
       background: 'var(--color-bg)', border: '1px solid var(--color-border)',
     }}>
-      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10 }}>
-        🎯 Assign Score
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+        <Target size={14} /> Assign Score
         {submission.topic_name && (
           <span style={{ color: 'var(--color-primary)', fontWeight: 400, marginLeft: 8 }}>
             for "{submission.topic_name}"
@@ -288,8 +291,9 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
         <div style={{
           marginBottom: 10, fontSize: 12, padding: '6px 10px', borderRadius: 8,
           background: 'rgba(34,197,94,.1)', color: 'var(--color-green)',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          ✅ Previously scored: <strong>{submission.teacher_score}/100</strong>
+          <CheckCircle2 size={13} /> Previously scored: <strong>{submission.teacher_score}/100</strong>
           {submission.scored_by && ` by ${submission.scored_by}`}
           {submission.scored_at && ` on ${formatDate(submission.scored_at)}`}
         </div>

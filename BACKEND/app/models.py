@@ -19,11 +19,6 @@ class SubmissionStatus:
     GRADED    = "graded"
     LATE      = "late"
 
-class SessionStatus:
-    COMPLETED   = "completed"
-    INTERRUPTED = "interrupted"
-    IN_PROGRESS = "in_progress"
-
 class RiskLevel:
     LOW    = "low"
     MEDIUM = "medium"
@@ -49,7 +44,6 @@ class User(db.Model):
 
     project_memberships = db.relationship("ProjectMember", back_populates="user", lazy="dynamic")
     submissions         = db.relationship("Submission", foreign_keys="Submission.student_id", back_populates="student", lazy="dynamic")
-    focus_sessions      = db.relationship("FocusSession", back_populates="user", lazy="dynamic")
     notifications       = db.relationship("Notification", back_populates="user", lazy="dynamic")
     portfolio           = db.relationship("Portfolio", back_populates="user", uselist=False)
     risk_profile        = db.relationship("RiskProfile", back_populates="user", uselist=False)
@@ -323,33 +317,6 @@ class EditHistory(db.Model):
             "timestamp":      self.timestamp.isoformat(),
         }
 
-class FocusSession(db.Model):
-    __tablename__ = "focus_sessions"
-    id               = db.Column(db.String(36), primary_key=True, default=gen_uuid)
-    user_id          = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
-    topic_id         = db.Column(db.String(36), db.ForeignKey("topics.id"), nullable=True)
-    topic_label      = db.Column(db.String(200), nullable=True)
-    duration_minutes = db.Column(db.Integer, default=25)
-    sessions_count   = db.Column(db.Integer, default=1)
-    status           = db.Column(db.String(20), default=SessionStatus.COMPLETED)
-    started_at       = db.Column(db.DateTime(timezone=True), nullable=False)
-    ended_at         = db.Column(db.DateTime(timezone=True), nullable=True)
-    notes            = db.Column(db.Text, nullable=True)
-    created_at       = db.Column(db.DateTime(timezone=True), default=now_utc)
-    user  = db.relationship("User", back_populates="focus_sessions")
-    topic = db.relationship("Topic")
-
-    def to_dict(self):
-        return {
-            "id":               self.id,
-            "topic_label":      self.topic_label,
-            "duration_minutes": self.duration_minutes,
-            "sessions_count":   self.sessions_count,
-            "status":           self.status,
-            "started_at":       self.started_at.isoformat(),
-            "ended_at":         self.ended_at.isoformat() if self.ended_at else None,
-        }
-
 class ActivityLog(db.Model):
     __tablename__ = "activity_logs"
     id          = db.Column(db.String(36), primary_key=True, default=gen_uuid)
@@ -521,6 +488,13 @@ class Notification(db.Model):
 
 # ── Courses ───────────────────────────────────────────────────────────────────
 
+class CourseStatus:
+    ACTIVE            = "active"
+    PENDING_APPROVAL  = "pending_approval"   # teacher created it, awaiting admin sign-off
+    PENDING_DELETION  = "pending_deletion"   # teacher requested removal, awaiting admin sign-off
+    DELETED           = "deleted"            # admin approved removal (soft-deleted)
+
+
 class Course(db.Model):
     __tablename__ = "courses"
     id            = db.Column(db.String(36), primary_key=True, default=gen_uuid)
@@ -530,6 +504,7 @@ class Course(db.Model):
     credits       = db.Column(db.Integer, default=3)
     topic_keyword = db.Column(db.String(100), nullable=True)
     instructor_id = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=True)
+    status        = db.Column(db.String(20), default=CourseStatus.ACTIVE, nullable=False)
     created_at    = db.Column(db.DateTime(timezone=True), default=now_utc)
 
     instructor  = db.relationship("User", foreign_keys=[instructor_id])
@@ -547,6 +522,7 @@ class Course(db.Model):
             "topic_keyword": self.topic_keyword,
             "instructor_id": self.instructor_id,
             "instructor":    self.instructor.full_name if self.instructor else None,
+            "status":        self.status,
         }
 
 
@@ -672,9 +648,11 @@ class AnushkaQuestionBank(db.Model):
     title       = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     track       = db.Column(db.String(100), nullable=True)
+    course_id   = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=True)
     created_by  = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     created_at  = db.Column(db.DateTime(timezone=True), default=now_utc)
 
+    course = db.relationship("Course")
     questions = db.relationship(
         "AnushkaQuestion",
         backref="bank",
@@ -688,6 +666,9 @@ class AnushkaQuestionBank(db.Model):
             "title":       self.title,
             "description": self.description,
             "track":       self.track,
+            "course_id":   self.course_id,
+            "course_code": self.course.code if self.course else None,
+            "course_title": self.course.title if self.course else None,
             "created_by":  self.created_by,
             "created_at":  self.created_at.isoformat() if self.created_at else None,
         }

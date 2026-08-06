@@ -145,3 +145,25 @@ def sanitize_string(value: str, max_length: int = 500) -> str:
         return ""
     cleaned = bleach.clean(str(value).strip())
     return cleaned[:max_length]
+
+
+# Tags/attrs allowed from the rich-text submission editor (Tiptap output)
+RICH_TEXT_TAGS = [
+    "p", "br", "strong", "em", "u", "s", "blockquote",
+    "h1", "h2", "h3", "ul", "ol", "li", "a", "code", "pre",
+]
+RICH_TEXT_ATTRS = {"a": ["href", "target", "rel"]}
+
+
+def sanitize_rich_text(value: str, max_length: int = 50000) -> str:
+    """Sanitize HTML from the submission rich-text editor before storing it."""
+    import bleach
+    if not value:
+        return ""
+    cleaned = bleach.clean(
+        str(value).strip(),
+        tags=RICH_TEXT_TAGS,
+        attributes=RICH_TEXT_ATTRS,
+        strip=True,
+    )
+    return cleaned[:max_length]

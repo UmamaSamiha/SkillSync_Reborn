@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
+import {
+  CheckCircle2, XCircle, PartyPopper, ThumbsUp, BookOpen,
+  Trash2, GraduationCap, Library,
+} from 'lucide-react';
 import './QuestionBank.css';
 
 const DIFFICULTIES = ['beginner', 'intermediate', 'advanced'];
@@ -55,8 +59,12 @@ function QuizView({ bank, questions }) {
             <span className="quiz-score-num">{score.correct}/{score.total}</span>
             <span className="quiz-score-pct">{pct}%</span>
           </div>
-          <span className="quiz-score-msg">
-            {pct === 100 ? '🎉 Perfect score!' : pct >= 70 ? '👍 Good job!' : '📖 Keep practicing'}
+          <span className="quiz-score-msg" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {pct === 100
+              ? <><PartyPopper size={15} /> Perfect score!</>
+              : pct >= 70
+              ? <><ThumbsUp size={15} /> Good job!</>
+              : <><BookOpen size={15} /> Keep practicing</>}
           </span>
           <button className="btn" onClick={handleReset}>Try Again</button>
         </div>
@@ -74,8 +82,8 @@ function QuizView({ bank, questions }) {
               <span className="qb-badge qb-type">{q.question_type.replace('_', ' ')}</span>
               <span className="qb-pts">{q.points} pt{q.points > 1 ? 's' : ''}</span>
               {submitted && (
-                <span className={`quiz-result-badge ${correct ? 'result-correct' : 'result-incorrect'}`}>
-                  {correct ? '✅ Correct' : '❌ Incorrect'}
+                <span className={`quiz-result-badge ${correct ? 'result-correct' : 'result-incorrect'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  {correct ? <CheckCircle2 size={13} /> : <XCircle size={13} />} {correct ? 'Correct' : 'Incorrect'}
                 </span>
               )}
             </div>
@@ -95,7 +103,7 @@ function QuizView({ bank, questions }) {
                       onClick={() => handleAnswer(q.id, opt)}
                     >
                       <span className="quiz-radio">
-                        {isRight ? '✅' : isWrong ? '❌' : selected ? '●' : '○'}
+                        {isRight ? <CheckCircle2 size={14} /> : isWrong ? <XCircle size={14} /> : selected ? '●' : '○'}
                       </span>
                       {opt}
                     </li>
@@ -115,8 +123,10 @@ function QuizView({ bank, questions }) {
                     <button key={val}
                       className={`quiz-tf-btn ${selected ? 'selected' : ''} ${isRight ? 'opt-correct' : ''} ${isWrong ? 'opt-wrong' : ''}`}
                       onClick={() => handleAnswer(q.id, val)}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
                     >
-                      {isRight ? '✅ ' : isWrong ? '❌ ' : ''}{val.charAt(0).toUpperCase() + val.slice(1)}
+                      {isRight ? <CheckCircle2 size={14} /> : isWrong ? <XCircle size={14} /> : null}
+                      {val.charAt(0).toUpperCase() + val.slice(1)}
                     </button>
                   );
                 })}
@@ -256,19 +266,23 @@ function TeacherView({ bank, questions, onDelete, showQForm, onCancelAdd, onQues
             <span className={`qb-badge qb-diff-${q.difficulty}`}>{q.difficulty}</span>
             <span className="qb-badge qb-type">{q.question_type.replace('_', ' ')}</span>
             <span className="qb-pts">{q.points} pt{q.points > 1 ? 's' : ''}</span>
-            <button className="qb-delete-btn" onClick={() => onDelete(q.id)}>🗑</button>
+            <button className="qb-delete-btn" onClick={() => onDelete(q.id)}><Trash2 size={13} /></button>
           </div>
           <p className="qb-q-text"><strong>{i + 1}.</strong> {q.text}</p>
           {q.question_type === 'mcq' && q.options?.length > 0 && (
             <ul className="qb-options">
               {q.options.map((opt, j) => (
-                <li key={j} className={opt === q.correct_answer ? 'correct' : ''}>
-                  {opt === q.correct_answer ? '✅' : '○'} {opt}
+                <li key={j} className={opt === q.correct_answer ? 'correct' : ''} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  {opt === q.correct_answer ? <CheckCircle2 size={13} /> : '○'} {opt}
                 </li>
               ))}
             </ul>
           )}
-          {q.question_type !== 'mcq' && <p className="qb-answer">✅ {q.correct_answer}</p>}
+          {q.question_type !== 'mcq' && (
+            <p className="qb-answer" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CheckCircle2 size={13} /> {q.correct_answer}
+            </p>
+          )}
         </div>
       ))}
     </div>
@@ -290,6 +304,8 @@ export default function QuestionBankPage() {
   const [showQForm,    setShowQForm]    = useState(false);
   const [bankTitle,    setBankTitle]    = useState('');
   const [bankDesc,     setBankDesc]     = useState('');
+  const [bankCourseId, setBankCourseId] = useState('');
+  const [myCourses,    setMyCourses]    = useState([]);
   const [saving,       setSaving]       = useState(false);
 
   const loadBanks = () => {
@@ -301,6 +317,16 @@ export default function QuestionBankPage() {
   };
 
   useEffect(() => { loadBanks(); }, []);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    // Teachers can only create banks for subjects (courses) they teach; admins see all courses.
+    const endpoint = user?.role === 'admin' ? '/courses/' : '/courses/mine';
+    api.get(endpoint)
+      .then(res => setMyCourses(res.data?.data ?? []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canEdit]);
 
   const loadQuestions = (bank) => {
     setActiveBank(bank);
@@ -314,11 +340,16 @@ export default function QuestionBankPage() {
 
   const handleCreateBank = async () => {
     if (!bankTitle.trim()) return toast.error('Title is required');
+    if (!bankCourseId) return toast.error('Select which subject this bank is for');
     setSaving(true);
     try {
-      await api.post('/question-bank', { title: bankTitle.trim(), description: bankDesc.trim() });
+      await api.post('/question-bank', {
+        title: bankTitle.trim(),
+        description: bankDesc.trim(),
+        course_id: bankCourseId,
+      });
       toast.success('Bank created!');
-      setBankTitle(''); setBankDesc(''); setShowBankForm(false);
+      setBankTitle(''); setBankDesc(''); setBankCourseId(''); setShowBankForm(false);
       loadBanks();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed');
@@ -332,7 +363,9 @@ export default function QuestionBankPage() {
       toast.success('Bank deleted');
       if (activeBank?.id === bankId) { setActiveBank(null); setQuestions([]); }
       loadBanks();
-    } catch { toast.error('Delete failed'); }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Delete failed');
+    }
   };
 
   const handleDeleteQuestion = async (qId) => {
@@ -354,7 +387,7 @@ export default function QuestionBankPage() {
     <div className="qb-page">
 
       <div className="qb-header">
-        <h1>📚 Question Bank</h1>
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: 10 }}><Library size={22} /> Question Bank</h1>
         {canEdit && (
           <button className="btn btn-primary" onClick={() => setShowBankForm(!showBankForm)}>
             + New Bank
@@ -366,6 +399,22 @@ export default function QuestionBankPage() {
         <div className="qb-card">
           <h2>Create Question Bank</h2>
           <div className="qb-field">
+            <label>Subject *</label>
+            <select className="input" value={bankCourseId} onChange={e => setBankCourseId(e.target.value)}>
+              <option value="">
+                {myCourses.length === 0 ? 'No courses available' : 'Select a subject…'}
+              </option>
+              {myCourses.map(c => (
+                <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
+              ))}
+            </select>
+            {user?.role === 'teacher' && myCourses.length === 0 && (
+              <p className="text-xs text-muted mt-4">
+                You have no courses yet — create one from the Courses page first.
+              </p>
+            )}
+          </div>
+          <div className="qb-field">
             <label>Title *</label>
             <input value={bankTitle} onChange={e => setBankTitle(e.target.value)} placeholder="e.g. Midterm Bank" />
           </div>
@@ -374,7 +423,7 @@ export default function QuestionBankPage() {
             <textarea value={bankDesc} onChange={e => setBankDesc(e.target.value)} rows={2} placeholder="Optional description" />
           </div>
           <div className="qb-actions">
-            <button className="btn btn-primary" onClick={handleCreateBank} disabled={saving}>
+            <button className="btn btn-primary" onClick={handleCreateBank} disabled={saving || !bankCourseId}>
               {saving ? 'Creating…' : 'Create'}
             </button>
             <button className="btn" onClick={() => setShowBankForm(false)}>Cancel</button>
@@ -395,13 +444,16 @@ export default function QuestionBankPage() {
               onClick={() => loadQuestions(bank)}
             >
               <div className="qb-bank-info">
-                <span className="qb-bank-title">{bank.title}</span>
+                <span className="qb-bank-title">
+                  {bank.course_code && <span className="badge badge-info" style={{ fontSize: '0.65rem', marginRight: 6 }}>{bank.course_code}</span>}
+                  {bank.title}
+                </span>
                 <span className="qb-bank-count">{bank.total} question{bank.total !== 1 ? 's' : ''}</span>
               </div>
               {canEdit && (
                 <button className="qb-delete-btn"
                   onClick={e => { e.stopPropagation(); handleDeleteBank(bank.id); }}
-                >🗑</button>
+                ><Trash2 size={13} /></button>
               )}
             </div>
           ))}
@@ -420,10 +472,10 @@ export default function QuestionBankPage() {
               <div className="qb-questions-header">
                 <div>
                   <h2>{activeBank.title}</h2>
-                  <p className="qb-role-hint">
+                  <p className="qb-role-hint" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {canEdit
-                      ? '👩‍🏫 Teacher view — you can see and manage answers'
-                      : '🎓 Answer all questions, then click Submit to see your score'}
+                      ? <><GraduationCap size={14} /> Teacher view — you can see and manage answers</>
+                      : <><GraduationCap size={14} /> Answer all questions, then click Submit to see your score</>}
                   </p>
                 </div>
                 {canEdit && (
