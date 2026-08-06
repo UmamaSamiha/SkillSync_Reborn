@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Timer, History, BarChart2,
   Award, ShieldAlert, LogOut,
   FileText, Bell, GraduationCap, BookOpen, Clock, PieChart,
-  Map, User, HelpCircle, Edit, ClipboardList, Settings
+  Map, User, HelpCircle, Edit, ClipboardList, Settings, Video
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -11,6 +11,7 @@ import './Sidebar.css';
 const teacherNav = [
   { to: '/teacher',        icon: GraduationCap, label: 'Dashboard'     },
   { to: '/courses',        icon: BookOpen,      label: 'Courses'       },
+  { to: '/live-classes',   icon: Video,         label: 'Live Classes'  },
   { to: '/assignments',    icon: FileText,      label: 'Assignments'   },
   { to: '/contributions',  icon: PieChart,      label: 'Contributions' },
   { to: '/analytics',      icon: BarChart2,     label: 'Analytics'     },
@@ -22,6 +23,7 @@ const teacherNav = [
 
 const adminNav = [
   { to: '/admin',         icon: ShieldAlert,   label: 'Admin Panel'   },
+  { to: '/live-classes',  icon: Video,         label: 'Live Classes'  },
   { to: '/admin/edits',   icon: ClipboardList, label: 'Edit Tracking' },
   { to: '/admin/topics',  icon: Settings,      label: 'Topic Manager' },
 ];
@@ -39,6 +41,7 @@ export default function Sidebar() {
     { to: '/focus',                 icon: Timer,           label: 'Focus Mode'    },
     { to: '/history',               icon: History,         label: 'History'       },
     { to: '/courses',               icon: BookOpen,        label: 'Courses'       },
+    { to: '/live-classes',          icon: Video,           label: 'Live Classes'  },
     { to: '/assignments',           icon: FileText,        label: 'Assignments'   },
     { to: '/timetracker',           icon: Clock,           label: 'Time Tracker'  },
     { to: '/notifications',         icon: Bell,            label: 'Notifications' },
