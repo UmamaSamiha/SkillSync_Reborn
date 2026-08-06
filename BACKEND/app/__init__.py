@@ -71,6 +71,7 @@ def create_app(config_name: str = None) -> Flask:
     from app.api.edit_tracking.routes import edit_tracking_bp
     # ── NEW: AI detection blueprint ───────────────────────────────
     from app.api.ai.routes             import ai_bp
+    from app.api.live_classes.routes   import live_classes_bp
 
     app.register_blueprint(auth_bp,         url_prefix="/api/auth")
     app.register_blueprint(users_bp,        url_prefix="/api/users")
@@ -89,6 +90,7 @@ def create_app(config_name: str = None) -> Flask:
     app.register_blueprint(edit_tracking_bp, url_prefix="/api/edit-tracking")
     # ── NEW ───────────────────────────────────────────────────────
     app.register_blueprint(ai_bp,           url_prefix="/api/ai")
+    app.register_blueprint(live_classes_bp, url_prefix="/api/live-classes")
 
     # ── JWT Callbacks ─────────────────────────────────────────────
     @jwt.expired_token_loader

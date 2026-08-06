@@ -17,6 +17,8 @@ import NotificationsPage from './pages/Notifications';
 import CoursesPage from './pages/Courses';
 import TimeTrackerPage from './pages/TimeTracker';
 import ContributionsPage from './pages/Contributions';
+import LiveClassesPage from './pages/LiveClasses';
+import LiveClassRoomPage from './pages/LiveClassRoom';
 
 // Anushka's pages
 import CurriculumPage from './pages/Curriculum';
@@ -129,6 +131,12 @@ function AppRoutes() {
       }/>
       <Route path="/contributions" element={
         <PrivateRoute><ContributionsPage /></PrivateRoute>
+      }/>
+      <Route path="/live-classes" element={
+        <PrivateRoute><LiveClassesPage /></PrivateRoute>
+      }/>
+      <Route path="/live-classes/:classId/room" element={
+        <PrivateRoute><LiveClassRoomPage /></PrivateRoute>
       }/>
   
 
