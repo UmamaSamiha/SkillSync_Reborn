@@ -32,6 +32,18 @@ def create_app(config_name: str = None) -> Flask:
     from app.config import config_map
     app.config.from_object(config_map[config_name])
 
+    if config_name == "production":
+        if app.config.get("SECRET_KEY") == "dev-secret-change-me":
+            app.logger.warning(
+                "SECURITY: running in production with the default SECRET_KEY. "
+                "Set the SECRET_KEY environment variable."
+            )
+        if app.config.get("JWT_SECRET_KEY") in ("jwt-secret-change-me", "your-super-secret-jwt-key-change-this"):
+            app.logger.warning(
+                "SECURITY: running in production with a placeholder JWT_SECRET_KEY. "
+                "Set the JWT_SECRET_KEY environment variable to a real secret."
+            )
+
     # ── Initialize Extensions ─────────────────────────────────────
     db.init_app(app)
     migrate.init_app(app, db)
@@ -71,6 +83,8 @@ def create_app(config_name: str = None) -> Flask:
     # ── NEW: AI detection blueprint ───────────────────────────────
     from app.api.ai.routes             import ai_bp
     from app.api.live_classes.routes   import live_classes_bp
+    from app.api.learning_twin.routes  import learning_twin_bp
+    from app.api.resources.routes      import resources_bp
 
     app.register_blueprint(auth_bp,         url_prefix="/api/auth")
     app.register_blueprint(users_bp,        url_prefix="/api/users")
@@ -89,6 +103,8 @@ def create_app(config_name: str = None) -> Flask:
     # ── NEW ───────────────────────────────────────────────────────
     app.register_blueprint(ai_bp,           url_prefix="/api/ai")
     app.register_blueprint(live_classes_bp, url_prefix="/api/live-classes")
+    app.register_blueprint(learning_twin_bp, url_prefix="/api/learning-twin")
+    app.register_blueprint(resources_bp,    url_prefix="/api/resources")
 
     # ── JWT Callbacks ─────────────────────────────────────────────
     @jwt.expired_token_loader

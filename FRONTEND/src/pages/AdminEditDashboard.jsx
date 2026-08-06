@@ -240,8 +240,9 @@ function DiffViewer({ evA, evB, onClose }) {
 }
 
 function ScorePanel({ submission, onScored, onEmailSent }) {
-  const [score,   setScore]   = useState('');
-  const [scoring, setScoring] = useState(false);
+  const [score,    setScore]    = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [scoring,  setScoring]  = useState(false);
 
   const handleScore = async () => {
     const n = parseInt(score, 10);
@@ -251,7 +252,9 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
     }
     setScoring(true);
     try {
-      const res = await api.post(`/edit-tracking/submission/${submission.id}/score`, { score: n });
+      const res = await api.post(`/edit-tracking/submission/${submission.id}/score`, {
+        score: n, feedback: feedback.trim(),
+      });
       toast.success(res.data.message);
 
     const scoreNum = parseInt(score, 10);
@@ -266,6 +269,7 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
 
       onScored();
       setScore('');
+      setFeedback('');
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Scoring failed');
     } finally {
@@ -298,6 +302,15 @@ function ScorePanel({ submission, onScored, onEmailSent }) {
           {submission.scored_at && ` on ${formatDate(submission.scored_at)}`}
         </div>
       )}
+
+      <textarea
+        className="input"
+        placeholder="Feedback for the student (optional) — they'll see this in their notifications"
+        value={feedback}
+        onChange={e => setFeedback(e.target.value)}
+        rows={2}
+        style={{ width: '100%', resize: 'vertical', fontFamily: 'inherit', marginBottom: 10 }}
+      />
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         <input

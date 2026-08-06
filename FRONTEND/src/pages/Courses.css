@@ -1,22 +1,50 @@
-.courses-page { max-width: 860px; }
+.courses-page { max-width: 1100px; }
 
-.courses-list { display: flex; flex-direction: column; gap: 12px; }
+/* ── Course blocks (catalog grid) ─────────────────────────── */
+.courses-blocks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
 
-.course-card { padding: 0; overflow: hidden; cursor: default; }
-.course-card.expanded { box-shadow: var(--shadow-md); }
+.course-block {
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast), transform var(--duration-fast);
+  display: flex;
+  flex-direction: column;
+}
+.course-block:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
 
-.course-header {
+.course-block-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-top: 12px;
+}
+
+.course-block-instructor { margin-top: 2px; }
+
+.course-block-desc {
+  margin-top: 10px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.course-block-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
-  cursor: pointer;
-  gap: 12px;
-  transition: background var(--duration-fast);
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
 }
-.course-header:hover { background: var(--color-bg); }
 
-.course-header-left { display: flex; align-items: center; gap: 16px; flex: 1; }
+.course-block-tags:not(:empty) { margin-top: 10px; }
 
 .course-code {
   font-family: var(--font-mono);
@@ -27,14 +55,6 @@
   padding: 4px 10px;
   border-radius: var(--radius-sm);
   white-space: nowrap;
-}
-
-.course-title { font-weight: 600; font-size: 0.95rem; }
-
-.course-body {
-  padding: 0 24px 24px;
-  border-top: 1px solid var(--color-border);
-  animation: fadeIn 0.2s var(--ease-smooth) both;
 }
 
 /* Books */

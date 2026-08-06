@@ -4,15 +4,19 @@ from flask_jwt_extended import jwt_required
 from app import db
 from app.models import (
     User, AnushkaTopic, AnushkaUserTopicProgress,
-    AnushkaTopicPrerequisite, AnushkaSubmission, AnushkaEditEvent
+    AnushkaTopicPrerequisite, AnushkaSubmission, AnushkaEditEvent, Certificate, Notification
 )
 from app.utils.helpers import success, error, get_current_user
+from app.api.certificates.routes import issue_certificate
 
 edit_tracking_bp = Blueprint("anushka_edit_tracking", __name__)
 
 
-def _recompute_unlock(user_id):
-    all_topics = AnushkaTopic.query.all()
+def _recompute_unlock(user_id, course_id=None):
+    query = AnushkaTopic.query
+    if course_id:
+        query = query.filter_by(course_id=course_id)
+    all_topics = query.all()
     mastered_ids = {
         p.topic_id
         for p in AnushkaUserTopicProgress.query.filter_by(user_id=user_id, status="mastered").all()
@@ -25,7 +29,10 @@ def _recompute_unlock(user_id):
             db.session.flush()
         if prog.status in ("mastered", "in_progress"):
             continue
-        prereq_ids = {p.prerequisite_id for p in topic.prerequisites}
+        if topic.is_final_exam:
+            prereq_ids = {t.id for t in all_topics if t.id != topic.id}
+        else:
+            prereq_ids = {p.prerequisite_id for p in topic.prerequisites}
         if len(prereq_ids) == 0:
             prog.status = "unlocked"
         else:
@@ -120,19 +127,25 @@ def score_submission(sub_id):
     submission = AnushkaSubmission.query.get(sub_id)
     if not submission:
         return error("Submission not found", 404)
-    data  = request.get_json(silent=True) or {}
-    score = data.get("score")
+    data     = request.get_json(silent=True) or {}
+    score    = data.get("score")
+    feedback = (data.get("feedback") or "").strip()
     if score is None or not isinstance(score, (int, float)):
         return error("score (0-100) is required", 400)
     score = max(0, min(100, int(score)))
     submission.teacher_score = score
     submission.scored_by     = user.id
     submission.scored_at     = datetime.now(timezone.utc)
-    unlocked = False
+    unlocked      = False
+    cert_earned   = False
+    passed        = False
+    topic         = None
     student  = submission.user
     if student and submission.topic_id:
         topic = AnushkaTopic.query.get(submission.topic_id)
-        if topic and score >= topic.mastery_threshold:
+        if topic:
+            passed = score >= topic.mastery_threshold
+        if topic and passed:
             prog = AnushkaUserTopicProgress.query.filter_by(
                 user_id=student.id, topic_id=topic.id
             ).first()
@@ -145,9 +158,43 @@ def score_submission(sub_id):
                 prog.quiz_score = score
                 prog.updated_at = datetime.now(timezone.utc)
                 unlocked = True
-            _recompute_unlock(student.id)
+                if topic.is_final_exam and topic.course_id:
+                    existing_cert = Certificate.query.filter_by(
+                        user_id=student.id, course_id=topic.course_id
+                    ).first()
+                    if not existing_cert:
+                        issue_certificate(
+                            student,
+                            course_id = topic.course_id,
+                            title     = f"Certificate of Completion — {topic.course.title}",
+                        )
+                        cert_earned = True
+            _recompute_unlock(student.id, topic.course_id)
+
+    if student:
+        step_ref = f' for "{topic.title}"' if topic else ''
+        if cert_earned:
+            headline = f"You passed the final exam{step_ref} and earned your certificate!"
+        elif topic and topic.is_final_exam and not passed:
+            headline = f"You scored {score}/100 on the final exam{step_ref} — you need {topic.mastery_threshold} to pass. Try again."
+        elif unlocked:
+            headline = f"You scored {score}/100{step_ref} — the next step is now unlocked."
+        elif topic and not passed:
+            headline = f"You scored {score}/100{step_ref} — you need {topic.mastery_threshold} to pass. Try again."
+        else:
+            headline = f"You scored {score}/100{step_ref}."
+        message = headline + (f" Feedback: {feedback}" if feedback else "")
+        db.session.add(Notification(
+            user_id     = student.id,
+            title       = "Certificate earned!" if cert_earned else "Your submission was graded",
+            message     = message,
+            type        = "grade",
+            entity_type = "submission",
+            entity_id   = str(submission.id),
+        ))
+
     db.session.commit()
     return success(
-        {**submission.to_dict(), "unlocked": unlocked},
+        {**submission.to_dict(), "unlocked": unlocked, "cert_earned": cert_earned},
         f"✅ Score {score} applied."
     )

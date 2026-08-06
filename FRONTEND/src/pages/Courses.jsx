@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BookOpen, Users, Star, ChevronDown, ChevronUp, FileText, Plus, X, Trash2, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Users, Star, FileText, Plus, X, Clock, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
@@ -11,71 +12,27 @@ function StatusBadge({ status }) {
   return null;
 }
 
-const OPEN_LIBRARY = 'https://openlibrary.org/search.json';
+const CREDIT_COLORS = { 3: 'badge-info', 4: 'badge-success', 2: 'badge-warning' };
 
-function BookCard({ book }) {
-  const cover = book.cover_i
-    ? `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`
-    : null;
+function CourseBlock({ course, canManage, isOwner, onClick }) {
   return (
-    <div className="book-card">
-      {cover
-        ? <img src={cover} alt={book.title} className="book-cover" />
-        : <div className="book-cover-placeholder"><BookOpen size={28} /></div>
-      }
-      <div className="book-info">
-        <p className="book-title">{book.title}</p>
-        <p className="book-author">{(book.author_name || []).slice(0, 2).join(', ')}</p>
-        {book.first_publish_year && (
-          <p className="book-year">{book.first_publish_year}</p>
-        )}
+    <div className="course-block card" onClick={onClick}>
+      <div className="flex-between" style={{ alignItems: 'flex-start' }}>
+        <span className="course-code">{course.code}</span>
+        <StatusBadge status={course.status} />
       </div>
-    </div>
-  );
-}
 
-function CourseCard({ course, onToggleEnroll, onRequestDelete, canManage, isOwner, isAdmin }) {
-  const [books,    setBooks]    = useState([]);
-  const [expanded, setExpanded] = useState(false);
-  const [loading,  setLoading]  = useState(false);
+      <p className="course-block-title">{course.title}</p>
+      <p className="text-xs text-muted course-block-instructor">
+        {course.instructor && `Instructor: ${course.instructor}`}
+      </p>
 
-  const fetchBooks = async () => {
-    if (books.length || !course.topic_keyword) return;
-    setLoading(true);
-    try {
-      const res = await fetch(
-        `${OPEN_LIBRARY}?q=${encodeURIComponent(course.topic_keyword)}&limit=4&fields=title,author_name,cover_i,first_publish_year`
-      );
-      const data = await res.json();
-      setBooks((data.docs || []).slice(0, 4));
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  };
+      {course.description && (
+        <p className="text-sm text-muted course-block-desc">{course.description}</p>
+      )}
 
-  const handleExpand = () => {
-    setExpanded(e => !e);
-    if (!expanded) fetchBooks();
-  };
-
-  const CREDIT_COLORS = { 3: 'badge-info', 4: 'badge-success', 2: 'badge-warning' };
-
-  return (
-    <div className={`course-card card ${expanded ? 'expanded' : ''}`}>
-      <div className="course-header" onClick={handleExpand}>
-        <div className="course-header-left">
-          <span className="course-code">{course.code}</span>
-          <div>
-            <p className="course-title">{course.title}</p>
-            <p className="text-xs text-muted" style={{ marginTop: 2 }}>
-              {course.instructor && `Instructor: ${course.instructor}`}
-            </p>
-          </div>
-        </div>
+      <div className="course-block-footer">
         <div className="flex-center gap-12">
-          <StatusBadge status={course.status} />
           <span className={`badge ${CREDIT_COLORS[course.credits] ?? 'badge-neutral'}`}>
             {course.credits} credits
           </span>
@@ -85,78 +42,23 @@ function CourseCard({ course, onToggleEnroll, onRequestDelete, canManage, isOwne
           <span className="flex-center gap-8 text-xs text-muted">
             <FileText size={12} /> {course.assignment_count ?? 0}
           </span>
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </div>
+        <ChevronRight size={16} className="text-muted" />
       </div>
 
-      {expanded && (
-        <div className="course-body">
-          {course.description && (
-            <p className="text-sm text-muted mb-16">{course.description}</p>
-          )}
-
-          {/* Students see enroll button; teachers see their own course */}
-          {!canManage && (
-            <div className="flex-center gap-12 mb-16">
-              <button
-                className={`btn btn-sm ${course.enrolled ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={() => onToggleEnroll(course)}
-              >
-                {course.enrolled ? 'Unenroll' : 'Enroll'}
-              </button>
-              {course.enrolled && (
-                <span className="badge badge-success"><Star size={11} /> Enrolled</span>
-              )}
-            </div>
-          )}
-
-          {canManage && (
-            <div className="flex-center gap-12 mb-16" style={{ flexWrap: 'wrap' }}>
-              {isOwner && <span className="badge badge-success">Your Course</span>}
-              <span className="text-xs text-muted">{course.student_count} students enrolled</span>
-
-              {(isOwner || isAdmin) && course.status === 'active' && (
-                <button
-                  className="btn btn-ghost btn-sm"
-                  style={{ color: 'var(--color-danger)', marginLeft: 'auto' }}
-                  onClick={() => onRequestDelete(course)}
-                >
-                  <Trash2 size={13} /> {isAdmin && !isOwner ? 'Remove Course' : 'Request Removal'}
-                </button>
-              )}
-              {course.status === 'pending_deletion' && (
-                <span className="text-xs text-muted" style={{ marginLeft: 'auto' }}>
-                  Removal requested — awaiting admin approval
-                </span>
-              )}
-            </div>
-          )}
-
-          <div className="recommended-books">
-            <h4 className="mb-16" style={{ fontSize: '0.9rem' }}>
-              Recommended Reading
-              <span className="text-xs text-muted" style={{ marginLeft: 8, fontWeight: 400 }}>
-                via Open Library
-              </span>
-            </h4>
-            {loading && <p className="text-sm text-muted">Fetching books...</p>}
-            {!loading && books.length > 0 && (
-              <div className="books-grid">
-                {books.map((b, i) => <BookCard key={i} book={b} />)}
-              </div>
-            )}
-            {!loading && books.length === 0 && (
-              <p className="text-sm text-muted">No recommendations found.</p>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="flex-center gap-8 course-block-tags">
+        {canManage && isOwner && <span className="badge badge-success">Your Course</span>}
+        {!canManage && course.enrolled && (
+          <span className="badge badge-success"><Star size={11} /> Enrolled</span>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function CoursesPage() {
   const { user, isTeacher, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const canManage = isTeacher || isAdmin;
 
   const [courses,    setCourses]    = useState([]);
@@ -197,35 +99,6 @@ export default function CoursesPage() {
       toast.error(err.response?.data?.error || 'Failed to create course');
     } finally {
       setCreating(false);
-    }
-  };
-
-  const handleRequestDelete = async (course) => {
-    const confirmMsg = isAdmin
-      ? `Remove ${course.code}? This takes it off the active catalog immediately.`
-      : `Request removal of ${course.code}? An admin will need to approve it.`;
-    if (!window.confirm(confirmMsg)) return;
-    try {
-      const res = await api.delete(`/courses/${course.id}`);
-      toast.success(res.data?.message || 'Done');
-      fetchCourses();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Action failed');
-    }
-  };
-
-  const toggleEnroll = async (course) => {
-    try {
-      if (course.enrolled) {
-        await api.delete(`/courses/${course.id}/enroll`);
-        toast.success(`Unenrolled from ${course.code}`);
-      } else {
-        await api.post(`/courses/${course.id}/enroll`);
-        toast.success(`Enrolled in ${course.code}!`);
-      }
-      fetchCourses();
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Action failed');
     }
   };
 
@@ -334,16 +207,14 @@ export default function CoursesPage() {
         </div>
       )}
 
-      <div className="courses-list">
+      <div className="courses-blocks">
         {visibleCourses.map(c => (
-          <CourseCard
+          <CourseBlock
             key={c.id}
             course={c}
-            onToggleEnroll={toggleEnroll}
-            onRequestDelete={handleRequestDelete}
             canManage={canManage}
             isOwner={c.instructor_id === user?.id}
-            isAdmin={isAdmin}
+            onClick={() => navigate(`/courses/${c.id}`)}
           />
         ))}
       </div>

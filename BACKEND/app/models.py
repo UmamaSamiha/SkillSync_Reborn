@@ -151,16 +151,37 @@ class Topic(db.Model):
 class Resource(db.Model):
     __tablename__ = "resources"
     id         = db.Column(db.String(36), primary_key=True, default=gen_uuid)
-    topic_id   = db.Column(db.String(36), db.ForeignKey("topics.id"), nullable=False)
+    topic_id   = db.Column(db.String(36), db.ForeignKey("topics.id"), nullable=True)
+    course_id  = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=True)
     title      = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
     type       = db.Column(db.String(50), nullable=False)
     url        = db.Column(db.String(500), nullable=True)
     file_path  = db.Column(db.String(500), nullable=True)
+    file_name  = db.Column(db.String(255), nullable=True)
     difficulty = db.Column(db.String(20), default=DifficultyLevel.BEGINNER)
     created_by = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=now_utc)
     topic      = db.relationship("Topic", back_populates="resources")
+    course     = db.relationship("Course")
     creator    = db.relationship("User")
+
+    def to_dict(self):
+        return {
+            "id":          self.id,
+            "topic_id":    self.topic_id,
+            "course_id":   self.course_id,
+            "title":       self.title,
+            "description": self.description,
+            "type":        self.type,
+            "url":         self.url,
+            "file_path":   self.file_path,
+            "file_name":   self.file_name,
+            "difficulty":  self.difficulty,
+            "created_by":  self.created_by,
+            "uploaded_by": self.creator.full_name if self.creator else None,
+            "created_at":  self.created_at.isoformat() if self.created_at else None,
+        }
 
 class Assignment(db.Model):
     __tablename__ = "assignments"
@@ -447,6 +468,7 @@ class Certificate(db.Model):
     id                = db.Column(db.String(36), primary_key=True, default=gen_uuid)
     user_id           = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
     project_id        = db.Column(db.String(36), db.ForeignKey("projects.id"), nullable=True)
+    course_id         = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=True)
     title             = db.Column(db.String(300), nullable=False)
     grade             = db.Column(db.String(5), nullable=True)
     study_hours       = db.Column(db.Float, default=0.0)
@@ -456,6 +478,7 @@ class Certificate(db.Model):
     is_valid          = db.Column(db.Boolean, default=True)
     user    = db.relationship("User", back_populates="certificates")
     project = db.relationship("Project")
+    course  = db.relationship("Course")
 
     def to_dict(self):
         return {
@@ -466,6 +489,8 @@ class Certificate(db.Model):
             "verification_code": self.verification_code,
             "issued_at":         self.issued_at.isoformat(),
             "is_valid":          self.is_valid,
+            "course_id":         self.course_id,
+            "course_title":      self.course.title if self.course else None,
         }
 
 class Notification(db.Model):
@@ -656,7 +681,10 @@ class AnushkaTopic(db.Model):
     track             = db.Column(db.String(100), nullable=False, default="General")
     order             = db.Column(db.Integer, nullable=False, default=0)
     mastery_threshold = db.Column(db.Integer, nullable=False, default=80)
+    course_id         = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=True)
+    is_final_exam     = db.Column(db.Boolean, nullable=False, default=False)
 
+    course = db.relationship("Course")
     prerequisites    = db.relationship(
         "AnushkaTopicPrerequisite",
         foreign_keys="AnushkaTopicPrerequisite.topic_id",
@@ -679,6 +707,8 @@ class AnushkaTopic(db.Model):
             "track":             self.track,
             "order":             self.order,
             "mastery_threshold": self.mastery_threshold,
+            "course_id":         self.course_id,
+            "is_final_exam":     self.is_final_exam,
             "prerequisite_ids":  [p.prerequisite_id for p in self.prerequisites],
         }
 
@@ -845,4 +875,53 @@ class AnushkaEditEvent(db.Model):
             "chars_removed": self.chars_removed,
             "is_paste":      self.is_paste,
             "created_at":    self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+# ── AI Learning Twin ───────────────────────────────────────────────────────
+# A cached, periodically-recomputed learning profile per student. Rebuilt by
+# app.services.learning_twin_engine from existing signals (topic mastery,
+# grades, activity logs, time logs) rather than tracked live — see that
+# module for how each field is derived.
+
+class LearningProfile(db.Model):
+    __tablename__ = "learning_profiles"
+
+    id                  = db.Column(db.String(36), primary_key=True, default=gen_uuid)
+    user_id             = db.Column(db.String(36), db.ForeignKey("users.id"), unique=True, nullable=False)
+
+    strengths           = db.Column(db.JSON, default=list)   # [{track, title, mastery_score}]
+    weaknesses          = db.Column(db.JSON, default=list)   # [{track, title, reason}]
+    forgetting_patterns = db.Column(db.JSON, default=list)   # [{track, title, attempts}]
+    revision_needed     = db.Column(db.JSON, default=list)   # [{track, title, reason}]
+
+    learning_style      = db.Column(db.String(50), nullable=True)
+    learning_style_note = db.Column(db.Text, nullable=True)
+    pace                = db.Column(db.String(20), nullable=True)   # fast | steady | slow
+    confidence_level    = db.Column(db.String(20), nullable=True)   # high | medium | low
+    best_study_times    = db.Column(db.JSON, default=list)          # ["Weekday evenings", ...]
+
+    ai_summary          = db.Column(db.Text, nullable=True)
+    ai_recommendations  = db.Column(db.JSON, default=list)          # [str, ...]
+
+    data_points         = db.Column(db.Integer, default=0)   # signals used — lets the UI show confidence in the profile itself
+    computed_at         = db.Column(db.DateTime(timezone=True), default=now_utc, onupdate=now_utc)
+
+    user = db.relationship("User")
+
+    def to_dict(self):
+        return {
+            "strengths":            self.strengths or [],
+            "weaknesses":           self.weaknesses or [],
+            "forgetting_patterns":  self.forgetting_patterns or [],
+            "revision_needed":      self.revision_needed or [],
+            "learning_style":       self.learning_style,
+            "learning_style_note":  self.learning_style_note,
+            "pace":                 self.pace,
+            "confidence_level":     self.confidence_level,
+            "best_study_times":     self.best_study_times or [],
+            "ai_summary":           self.ai_summary,
+            "ai_recommendations":   self.ai_recommendations or [],
+            "data_points":          self.data_points,
+            "computed_at":          self.computed_at.isoformat() if self.computed_at else None,
         }

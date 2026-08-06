@@ -1,9 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, BarChart2,
-  Award, LogOut,
+  Award, LogOut, Brain,
   FileText, Bell, GraduationCap, BookOpen, Clock, PieChart,
-  Map, User, HelpCircle, ClipboardList, Settings, TrendingUp,
+  User, HelpCircle, ClipboardList, TrendingUp,
   AlertTriangle, Target, Lightbulb, ClipboardCheck, ShieldCheck, Video,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -18,13 +18,11 @@ const teacherNav = [
   { to: '/contributions',       icon: PieChart,      label: 'Contributions' },
   { to: '/notifications',       icon: Bell,          label: 'Notifications' },
   { to: '/teacher/edits',       icon: ClipboardList, label: 'Edit Tracking' },
-  { to: '/teacher/topics',      icon: Settings,      label: 'Topic Manager' },
   { to: '/question-bank',       icon: HelpCircle,    label: 'Question Bank' },
 ];
 
 const adminNav = [
   { to: '/admin',                  icon: LayoutDashboard, label: 'Overview'          },
-  { to: '/live-classes',           icon: Video,           label: 'Live Classes'      },
   { to: '/admin/risk',             icon: AlertTriangle,   label: 'Risk Detection'    },
   { to: '/admin/classification',   icon: Target,          label: 'Classification'    },
   { to: '/admin/engagement',       icon: Lightbulb,       label: 'Engagement'        },
@@ -44,6 +42,7 @@ export default function Sidebar() {
 
   const studentNav = [
     { to: '/dashboard',             icon: LayoutDashboard, label: 'Dashboard'     },
+    { to: '/learning-twin',         icon: Brain,           label: 'Learning Twin' },
     { to: `/portfolio/${user?.id}`, icon: User,            label: 'Portfolio'     },
     { to: '/courses',               icon: BookOpen,        label: 'Courses'       },
     { to: '/live-classes',          icon: Video,           label: 'Live Classes'  },
@@ -52,7 +51,6 @@ export default function Sidebar() {
     { to: '/notifications',         icon: Bell,            label: 'Notifications' },
     { to: '/analytics',             icon: BarChart2,       label: 'Analytics'     },
     { to: '/certificates',          icon: Award,           label: 'Certificates'  },
-    { to: '/curriculum',            icon: Map,             label: 'Curriculum'    },
     { to: '/question-bank',         icon: HelpCircle,      label: 'Question Bank' },
   ];
 

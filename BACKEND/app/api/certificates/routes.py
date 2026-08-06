@@ -18,6 +18,45 @@ from sqlalchemy import func
 certificates_bp = Blueprint("certificates", __name__)
 
 
+def issue_certificate(user, project_id=None, course_id=None, title=None, grade=None):
+    """
+    Create + PDF-generate a Certificate for `user`. Shared by the manual
+    /generate endpoint and automatic course-completion issuance.
+    """
+    total_minutes = db.session.query(
+        func.sum(TimeLog.minutes)
+    ).filter_by(user_id=user.id).scalar() or 0
+
+    if not grade:
+        records = GradeRecord.query.filter_by(user_id=user.id).all()
+        if records:
+            avg   = sum(r.percentage for r in records) / len(records)
+            grade = _letter_grade(avg)
+
+    verify_code = f"SS-{uuid.uuid4().hex[:10].upper()}"
+
+    cert = Certificate(
+        user_id           = user.id,
+        project_id        = project_id,
+        course_id         = course_id,
+        title             = title or f"Certificate of Completion — {user.full_name}",
+        grade             = grade,
+        study_hours       = round(total_minutes / 60, 1),
+        verification_code = verify_code,
+    )
+    db.session.add(cert)
+    db.session.flush()
+
+    # Generate PDF (reportlab — optional, won't block if it fails)
+    try:
+        pdf_path       = _generate_pdf(cert, user)
+        cert.file_path = pdf_path
+    except Exception as e:
+        current_app.logger.warning(f"PDF generation failed: {e}")
+
+    return cert
+
+
 # ── POST /api/certificates/generate ──────────────────────────────────────────
 @certificates_bp.route("/generate", methods=["POST"])
 @jwt_required()
@@ -46,39 +85,12 @@ def generate_certificate():
     if not user:
         return error("Student not found", 404)
 
-    # Calculate study hours from the Time Tracker
-    total_minutes = db.session.query(
-        func.sum(TimeLog.minutes)
-    ).filter_by(user_id=user_id).scalar() or 0
-
-    # Auto-calculate grade from GradeRecords if not provided
-    grade = data.get("grade")
-    if not grade:
-        records = GradeRecord.query.filter_by(user_id=user_id).all()
-        if records:
-            avg   = sum(r.percentage for r in records) / len(records)
-            grade = _letter_grade(avg)
-
-    verify_code = f"SS-{uuid.uuid4().hex[:10].upper()}"
-
-    cert = Certificate(
-        user_id           = user_id,
-        project_id        = data.get("project_id"),
-        title             = data.get("title") or f"Certificate of Completion — {user.full_name}",
-        grade             = grade,
-        study_hours       = round(total_minutes / 60, 1),
-        verification_code = verify_code,
+    cert = issue_certificate(
+        user,
+        project_id = data.get("project_id"),
+        title      = data.get("title"),
+        grade      = data.get("grade"),
     )
-    db.session.add(cert)
-    db.session.flush()
-
-    # Generate PDF (reportlab — optional, won't block if it fails)
-    try:
-        pdf_path       = _generate_pdf(cert, user)
-        cert.file_path = pdf_path
-    except Exception as e:
-        current_app.logger.warning(f"PDF generation failed: {e}")
-
     db.session.commit()
 
     return success({
@@ -135,11 +147,12 @@ def download_certificate(cert_id):
     if str(current.id) != str(cert.user_id) and current.role not in ["admin", "teacher"]:
         return error("Forbidden", 403)
 
-    if not cert.file_path or not os.path.exists(cert.file_path):
+    full_path = os.path.abspath(cert.file_path) if cert.file_path else None
+    if not full_path or not os.path.exists(full_path):
         return error("Certificate file not available. Try regenerating.", 404)
 
     return send_file(
-        cert.file_path,
+        full_path,
         as_attachment=True,
         download_name=f"certificate_{cert.verification_code}.pdf",
     )

@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Sidebar from './components/common/Sidebar';
 import LoginPage from './pages/Login';
 import HeatmapPage from './pages/Heatmap';
+import LearningTwinPage from './pages/LearningTwin';
 import MemberDetailPage from './pages/MemberDetail';
 import AdminOverview from './pages/AdminOverview';
 import AdminRisk from './pages/AdminRisk';
@@ -23,13 +24,13 @@ import AssignmentSubmissionsPage from './pages/AssignmentSubmissions';
 import SubmissionViewPage from './pages/SubmissionView';
 import NotificationsPage from './pages/Notifications';
 import CoursesPage from './pages/Courses';
+import CourseDetailPage from './pages/CourseDetail';
 import TimeTrackerPage from './pages/TimeTracker';
 import ContributionsPage from './pages/Contributions';
 import LiveClassesPage from './pages/LiveClasses';
 import LiveClassRoomPage from './pages/LiveClassRoom';
 
 // Anushka's pages
-import CurriculumPage from './pages/Curriculum';
 import PortfolioPage from './pages/Portfolio';
 import QuestionBankPage from './pages/QuestionBank';
 import EditTracker from './pages/EditTracker';
@@ -79,6 +80,9 @@ function AppRoutes() {
        <Route path="/heatmap" element={
         <PrivateRoute><HeatmapPage /></PrivateRoute>
       }/>
+      <Route path="/learning-twin" element={
+        <PrivateRoute><LearningTwinPage /></PrivateRoute>
+      }/>
 
       <Route path="/member/:userId" element={
         <PrivateRoute><MemberDetailPage /></PrivateRoute>
@@ -88,9 +92,6 @@ function AppRoutes() {
       }/>
 
       {/* Anushka's student routes */}
-      <Route path="/curriculum" element={
-        <PrivateRoute><CurriculumPage /></PrivateRoute>
-      }/>
       <Route path="/portfolio/:userId" element={
         <PrivateRoute><PortfolioPage /></PrivateRoute>
       }/>
@@ -136,6 +137,9 @@ function AppRoutes() {
       }/>
       <Route path="/courses" element={
         <PrivateRoute><CoursesPage /></PrivateRoute>
+      }/>
+      <Route path="/courses/:courseId" element={
+        <PrivateRoute><CourseDetailPage /></PrivateRoute>
       }/>
       <Route path="/timetracker" element={
         <PrivateRoute><TimeTrackerPage /></PrivateRoute>

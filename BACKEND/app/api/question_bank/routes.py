@@ -1,7 +1,7 @@
 from flask import Blueprint, request
 from flask_jwt_extended import jwt_required
 from app import db
-from app.models import AnushkaQuestionBank, AnushkaQuestion, Course, Role
+from app.models import AnushkaQuestionBank, AnushkaQuestion, Course, CourseEnrollment, Role
 from app.utils.helpers import success, error, get_current_user
 
 qbank_bp = Blueprint("anushka_qbank", __name__)
@@ -12,6 +12,27 @@ def _can_modify_bank(user, bank):
     return user.role == Role.ADMIN or bank.created_by == user.id
 
 
+def _can_view_bank(user, bank):
+    """
+    Admins/teachers can view any bank. Students can only view banks for
+    courses they're enrolled in (banks with no course_id — legacy/unscoped
+    banks — remain visible to everyone since there's no course to check).
+    """
+    if user.role != Role.STUDENT:
+        return True
+    if not bank.course_id:
+        return True
+    return CourseEnrollment.query.filter_by(
+        course_id=bank.course_id, student_id=user.id
+    ).first() is not None
+
+
+def _enrolled_course_ids(user_id):
+    return {
+        e.course_id for e in CourseEnrollment.query.filter_by(student_id=user_id).all()
+    }
+
+
 @qbank_bp.route("", methods=["GET"], strict_slashes=False)
 @jwt_required()
 def list_banks():
@@ -19,6 +40,11 @@ def list_banks():
     if not user:
         return error("User not found", 404)
     banks = AnushkaQuestionBank.query.all()
+
+    if user.role == Role.STUDENT:
+        enrolled = _enrolled_course_ids(user.id)
+        banks = [b for b in banks if not b.course_id or b.course_id in enrolled]
+
     return success([b.to_dict() for b in banks])
 
 
@@ -63,6 +89,8 @@ def get_bank(bank_id):
     bank = AnushkaQuestionBank.query.get(bank_id)
     if not bank:
         return error("Question bank not found", 404)
+    if not _can_view_bank(user, bank):
+        return error("You must be enrolled in this course to view its question bank", 403)
     questions = [q.to_dict() for q in bank.questions]
     return success({**bank.to_dict(), "questions": questions})
 
@@ -92,6 +120,8 @@ def get_questions(bank_id):
     bank = AnushkaQuestionBank.query.get(bank_id)
     if not bank:
         return error("Question bank not found", 404)
+    if not _can_view_bank(user, bank):
+        return error("You must be enrolled in this course to view its question bank", 403)
     questions = [q.to_dict() for q in bank.questions]
     return success(questions)
 
