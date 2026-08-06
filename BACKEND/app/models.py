@@ -29,6 +29,12 @@ class DifficultyLevel:
     INTERMEDIATE = "intermediate"
     ADVANCED     = "advanced"
 
+class LiveClassStatus:
+    SCHEDULED = "scheduled"
+    LIVE      = "live"
+    ENDED     = "ended"
+    CANCELED  = "canceled"
+
 class User(db.Model):
     __tablename__ = "users"
     id            = db.Column(db.String(36), primary_key=True, default=gen_uuid)
@@ -536,6 +542,78 @@ class CourseEnrollment(db.Model):
     course  = db.relationship("Course", back_populates="enrollments")
     student = db.relationship("User")
     __table_args__ = (db.UniqueConstraint("course_id", "student_id"),)
+
+
+# ── Live Classes ──────────────────────────────────────────────────────────────
+
+class LiveClass(db.Model):
+    __tablename__ = "live_classes"
+    id            = db.Column(db.String(36), primary_key=True, default=gen_uuid)
+    course_id     = db.Column(db.String(36), db.ForeignKey("courses.id"), nullable=False, index=True)
+    host_id       = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False)
+    title         = db.Column(db.String(200), nullable=False)
+    description   = db.Column(db.Text, nullable=True)
+    room_slug     = db.Column(db.String(64), unique=True, nullable=False, default=gen_uuid)
+    status        = db.Column(db.String(20), default=LiveClassStatus.SCHEDULED, nullable=False, index=True)
+    scheduled_at  = db.Column(db.DateTime(timezone=True), nullable=False)
+    started_at    = db.Column(db.DateTime(timezone=True), nullable=True)
+    ended_at      = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at    = db.Column(db.DateTime(timezone=True), default=now_utc)
+
+    course     = db.relationship("Course")
+    host       = db.relationship("User", foreign_keys=[host_id])
+    attendance = db.relationship("LiveClassAttendance", back_populates="live_class",
+                                  lazy="dynamic", cascade="all, delete-orphan")
+
+    def to_dict(self, current_user_id=None):
+        data = {
+            "id":            self.id,
+            "course_id":     self.course_id,
+            "course_code":   self.course.code if self.course else None,
+            "course_title":  self.course.title if self.course else None,
+            "host_id":       self.host_id,
+            "host_name":     self.host.full_name if self.host else None,
+            "title":         self.title,
+            "description":   self.description,
+            "room_slug":     self.room_slug,
+            "status":        self.status,
+            "scheduled_at":  self.scheduled_at.isoformat() if self.scheduled_at else None,
+            "started_at":    self.started_at.isoformat() if self.started_at else None,
+            "ended_at":      self.ended_at.isoformat() if self.ended_at else None,
+            "attendee_count": self.attendance.filter_by(left_at=None).count()
+                               if self.status == LiveClassStatus.LIVE else self.attendance.count(),
+        }
+        if current_user_id:
+            data["is_host"] = self.host_id == current_user_id
+        return data
+
+
+class LiveClassAttendance(db.Model):
+    __tablename__ = "live_class_attendance"
+    id            = db.Column(db.String(36), primary_key=True, default=gen_uuid)
+    live_class_id = db.Column(db.String(36), db.ForeignKey("live_classes.id"), nullable=False, index=True)
+    user_id       = db.Column(db.String(36), db.ForeignKey("users.id"), nullable=False, index=True)
+    joined_at     = db.Column(db.DateTime(timezone=True), default=now_utc)
+    left_at       = db.Column(db.DateTime(timezone=True), nullable=True)
+
+    live_class = db.relationship("LiveClass", back_populates="attendance")
+    user       = db.relationship("User")
+
+    def duration_minutes(self):
+        end = self.left_at or now_utc()
+        if not self.joined_at:
+            return 0
+        return round((end - self.joined_at).total_seconds() / 60, 1)
+
+    def to_dict(self):
+        return {
+            "id":              self.id,
+            "user_id":         self.user_id,
+            "user_name":       self.user.full_name if self.user else None,
+            "joined_at":       self.joined_at.isoformat() if self.joined_at else None,
+            "left_at":         self.left_at.isoformat() if self.left_at else None,
+            "duration_minutes": self.duration_minutes(),
+        }
 
 
 # ── Time Logs ─────────────────────────────────────────────────────────────────

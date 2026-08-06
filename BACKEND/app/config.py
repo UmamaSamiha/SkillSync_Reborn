@@ -38,6 +38,11 @@ class BaseConfig:
     MAIL_PASSWORD        = os.getenv("MAIL_PASSWORD")
     MAIL_DEFAULT_SENDER  = os.getenv("MAIL_DEFAULT_SENDER", "SkillSync <noreply@skillsync.edu>")
 
+    # ── Live Classes (Jitsi Meet) ────────────────────────────────────────────
+    # Public meet.jit.si needs no account/API key. Point this at a self-hosted
+    # Jitsi instance later if you outgrow the free public one.
+    JITSI_DOMAIN = os.getenv("JITSI_DOMAIN", "meet.jit.si")
+
     # ── File Upload ───────────────────────────────────────────────────────────
     UPLOAD_FOLDER        = os.getenv("UPLOAD_FOLDER", "uploads")
     MAX_CONTENT_LENGTH   = int(os.getenv("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))  # 16 MB

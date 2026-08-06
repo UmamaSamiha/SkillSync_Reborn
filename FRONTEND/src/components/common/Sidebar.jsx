@@ -4,7 +4,7 @@ import {
   Award, LogOut,
   FileText, Bell, GraduationCap, BookOpen, Clock, PieChart,
   Map, User, HelpCircle, ClipboardList, Settings, TrendingUp,
-  AlertTriangle, Target, Lightbulb, ClipboardCheck, ShieldCheck,
+  AlertTriangle, Target, Lightbulb, ClipboardCheck, ShieldCheck, Video,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import './Sidebar.css';
@@ -12,6 +12,7 @@ import './Sidebar.css';
 const teacherNav = [
   { to: '/teacher',             icon: GraduationCap, label: 'Dashboard'     },
   { to: '/courses',             icon: BookOpen,      label: 'Courses'       },
+  { to: '/live-classes',        icon: Video,         label: 'Live Classes'  },
   { to: '/assignments',         icon: FileText,      label: 'Assignments'   },
   { to: '/teacher/performance', icon: TrendingUp,    label: 'Performance'   },
   { to: '/contributions',       icon: PieChart,      label: 'Contributions' },
@@ -23,6 +24,7 @@ const teacherNav = [
 
 const adminNav = [
   { to: '/admin',                  icon: LayoutDashboard, label: 'Overview'          },
+  { to: '/live-classes',           icon: Video,           label: 'Live Classes'      },
   { to: '/admin/risk',             icon: AlertTriangle,   label: 'Risk Detection'    },
   { to: '/admin/classification',   icon: Target,          label: 'Classification'    },
   { to: '/admin/engagement',       icon: Lightbulb,       label: 'Engagement'        },
@@ -44,6 +46,7 @@ export default function Sidebar() {
     { to: '/dashboard',             icon: LayoutDashboard, label: 'Dashboard'     },
     { to: `/portfolio/${user?.id}`, icon: User,            label: 'Portfolio'     },
     { to: '/courses',               icon: BookOpen,        label: 'Courses'       },
+    { to: '/live-classes',          icon: Video,           label: 'Live Classes'  },
     { to: '/assignments',           icon: FileText,        label: 'Assignments'   },
     { to: '/timetracker',           icon: Clock,           label: 'Time Tracker'  },
     { to: '/notifications',         icon: Bell,            label: 'Notifications' },
